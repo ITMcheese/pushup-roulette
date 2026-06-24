@@ -38,21 +38,59 @@ workflows:
           echo "DELIMITER" >> $CM_ENV
       - name: Revoke old distribution certificates
         script: |
-          echo "Listing existing distribution certificates..."
-          for cert_type in DISTRIBUTION IOS_DISTRIBUTION; do
-            echo "Checking type: $cert_type"
-            CERT_LIST=$(app-store-connect certificates list \
-              --type "$cert_type" 2>&1) || true
-            echo "$CERT_LIST"
+          python3 << 'PYEOF'
+          import os, json, urllib.request, ssl, time, jwt
 
-            CERT_IDS=$(echo "$CERT_LIST" | grep -E '^\s+id:' | awk '{print $2}')
+          key_id = os.environ.get('APP_STORE_CONNECT_KEY_IDENTIFIER', '')
+          issuer_id = os.environ.get('APP_STORE_CONNECT_ISSUER_ID', '')
 
-            for cert_id in $CERT_IDS; do
-              echo "Revoking certificate $cert_id (type: $cert_type)..."
-              app-store-connect certificates delete "$cert_id" 2>&1 || true
-            done
-          done
-          echo "Certificate cleanup complete"
+          # Read the .p8 key file directly (Codemagic stores it here)
+          key_path = os.path.expanduser(f'~/private_keys/AuthKey_{key_id}.p8')
+          if not os.path.exists(key_path):
+              print(f"Key file not found at {key_path}, skipping")
+              exit(0)
+
+          with open(key_path, 'r') as f:
+              private_key = f.read()
+
+          print(f"Key ID: {key_id}, Key file loaded ({len(private_key)} bytes)")
+
+          token = jwt.encode(
+              {'iss': issuer_id, 'iat': int(time.time()),
+               'exp': int(time.time()) + 1200, 'aud': 'appstoreconnect-v1'},
+              private_key, algorithm='ES256', headers={'kid': key_id}
+          )
+
+          headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+          ctx = ssl.create_default_context()
+
+          for cert_type in ['DISTRIBUTION', 'IOS_DISTRIBUTION']:
+              url = f'https://api.appstoreconnect.apple.com/v1/certificates?filter[certificateType]={cert_type}'
+              req = urllib.request.Request(url, headers=headers)
+              try:
+                  resp = urllib.request.urlopen(req, context=ctx)
+                  data = json.loads(resp.read())
+              except Exception as e:
+                  print(f"Error listing {cert_type}: {e}")
+                  continue
+
+              certs = data.get('data', [])
+              print(f"Found {len(certs)} {cert_type} certificate(s)")
+
+              for cert in certs:
+                  cert_id = cert['id']
+                  print(f"Revoking certificate {cert_id}...")
+                  del_req = urllib.request.Request(
+                      f'https://api.appstoreconnect.apple.com/v1/certificates/{cert_id}',
+                      method='DELETE', headers=headers)
+                  try:
+                      urllib.request.urlopen(del_req, context=ctx)
+                      print(f"  Revoked {cert_id}")
+                  except Exception as e:
+                      print(f"  Warning: {e}")
+
+          print("Certificate cleanup complete")
+          PYEOF
       - name: Fetch signing files
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
