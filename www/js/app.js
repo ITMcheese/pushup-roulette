@@ -77,7 +77,17 @@ function updateChallengeDisplay(challenge) {
   const unit = challenge.unit || 'reps';
   const unitLabel = unit === 'seconds' ? 'sec' : 'reps';
   const statsEl = document.querySelector('.challenge-stats');
-  statsEl.innerHTML = `<span id="challenge-sets">${challenge.sets}</span> sets × <span id="challenge-reps">${challenge.reps}</span> ${unitLabel} &nbsp;·&nbsp; work: ${formatTimeCompact(challenge.workTime)} &nbsp;·&nbsp; rest: <span id="challenge-rest">${challenge.rest}s</span>`;
+  statsEl.textContent = '';
+  const setsSpan = document.createElement('span');
+  setsSpan.id = 'challenge-sets';
+  setsSpan.textContent = challenge.sets;
+  const repsSpan = document.createElement('span');
+  repsSpan.id = 'challenge-reps';
+  repsSpan.textContent = challenge.reps;
+  const restSpan = document.createElement('span');
+  restSpan.id = 'challenge-rest';
+  restSpan.textContent = challenge.rest + 's';
+  statsEl.append(setsSpan, ` sets × `, repsSpan, ` ${unitLabel}  ·  work: ${formatTimeCompact(challenge.workTime)}  ·  rest: `, restSpan);
 }
 
 // ── Generate a fresh challenge using current settings ───────
@@ -97,7 +107,13 @@ function renderProgressView() {
 
   $('stats-total-pushups').textContent  = stats.totalPushups ?? 0;
   $('stats-total-workouts').textContent = stats.totalWorkouts ?? 0;
-  $('stats-current-streak').innerHTML   = `${streak.current ?? 0} <span class="streak-fire">🔥</span>`;
+  const streakEl = $('stats-current-streak');
+  streakEl.textContent = '';
+  streakEl.append(String(streak.current ?? 0) + ' ');
+  const fireSpan = document.createElement('span');
+  fireSpan.className = 'streak-fire';
+  fireSpan.textContent = '\u{1F525}';
+  streakEl.appendChild(fireSpan);
   $('stats-longest-streak').textContent = streak.longest ?? 0;
 
   // Favorite variation
@@ -129,10 +145,13 @@ function renderBadges() {
   all.forEach((a) => {
     const card = document.createElement('div');
     card.className = 'badge' + (a.unlocked ? '' : ' locked');
-    card.innerHTML = `
-      <span class="badge-icon">${a.icon}</span>
-      <span class="badge-name">${a.name}</span>
-    `;
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'badge-icon';
+    iconSpan.textContent = a.icon;
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'badge-name';
+    nameSpan.textContent = a.name;
+    card.append(iconSpan, nameSpan);
     gallery.appendChild(card);
   });
 }
@@ -218,13 +237,18 @@ function updateGroupMemberList(members) {
   const workoutMembers = $('group-workout-members');
   if (workoutMembers && currentView === 'view-workout') {
     const heading = workoutMembers.querySelector('h3') || '';
-    workoutMembers.innerHTML = '';
+    workoutMembers.textContent = '';
     if (heading) workoutMembers.appendChild(typeof heading === 'string' ? (() => { const h = document.createElement('h3'); h.textContent = 'Group Progress'; return h; })() : heading);
     members.forEach((m) => {
       const card = document.createElement('div');
       card.className = 'member-progress-card';
-      card.innerHTML = `<span class="member-name">${m.name || m}</span>
-        <span class="member-set">${m.currentSet != null ? `Set ${m.currentSet}` : '—'}</span>`;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'member-name';
+      nameSpan.textContent = m.name || m;
+      const setSpan = document.createElement('span');
+      setSpan.className = 'member-set';
+      setSpan.textContent = m.currentSet != null ? `Set ${m.currentSet}` : '—';
+      card.append(nameSpan, setSpan);
       workoutMembers.appendChild(card);
     });
   }

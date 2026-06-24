@@ -21,8 +21,19 @@
   <!-- Styles -->
   <link rel="stylesheet" href="css/styles.css" />
 
+  <!-- Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' https://unpkg.com;
+                 style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
+                 font-src 'self' https://fonts.gstatic.com;
+                 img-src 'self' https://fitnessprogramer.com data:;
+                 connect-src 'self' https://0.peerjs.com wss://0.peerjs.com" />
+
   <!-- PeerJS -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"
+          integrity="sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR"
+          crossorigin="anonymous"></script>
 
   <!-- App -->
   <script defer type="module" src="js/app.js"></script>

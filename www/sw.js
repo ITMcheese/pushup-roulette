@@ -83,7 +83,7 @@ self.addEventListener('fetch', (event) => {
 
       // Not in cache, try network
       return fetch(event.request).then((networkResponse) => {
-        if (networkResponse.ok) {
+        if (networkResponse.ok && networkResponse.type !== 'opaque') {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);

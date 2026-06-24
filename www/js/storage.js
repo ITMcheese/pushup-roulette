@@ -37,8 +37,21 @@ function load(key, fallback) {
  * Stringify and persist.
  */
 function save(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn('Storage quota exceeded, pruning old workouts');
+    try {
+      const workouts = JSON.parse(localStorage.getItem(KEYS.WORKOUTS) || '[]');
+      if (workouts.length > 100) {
+        localStorage.setItem(KEYS.WORKOUTS, JSON.stringify(workouts.slice(0, 100)));
+      }
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (_) { /* storage completely full */ }
+  }
 }
+
+const MAX_WORKOUT_HISTORY = 500;
 
 /**
  * Return the start-of-day timestamp for a Date (midnight, local time).
@@ -64,6 +77,9 @@ export const Storage = {
       timestamp: Date.now()
     };
     workouts.unshift(record); // newest first
+    if (workouts.length > MAX_WORKOUT_HISTORY) {
+      workouts.length = MAX_WORKOUT_HISTORY;
+    }
     save(KEYS.WORKOUTS, workouts);
   },
 
@@ -258,9 +274,19 @@ export const Storage = {
    * @param {string} json
    */
   importData(json) {
-    const data = JSON.parse(json);
+    let data;
+    try {
+      data = JSON.parse(json);
+    } catch {
+      throw new Error('Invalid JSON');
+    }
+    if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('Invalid data format');
+    }
+    const allowedKeys = new Set(Object.keys(KEYS));
     for (const [label, key] of Object.entries(KEYS)) {
-      if (data[label] !== undefined && data[label] !== null) {
+      if (!allowedKeys.has(label)) continue;
+      if (Object.prototype.hasOwnProperty.call(data, label) && data[label] !== null) {
         save(key, data[label]);
       }
     }

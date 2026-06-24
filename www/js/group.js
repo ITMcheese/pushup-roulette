@@ -7,6 +7,8 @@
  */
 
 const MAX_MEMBERS = 30;
+const MAX_NAME_LENGTH = 30;
+const ROOM_CODE_LENGTH = 6;
 const ROOM_PREFIX = 'pushroulette-';
 
 const MSG_TYPES = {
@@ -84,7 +86,7 @@ export const Group = {
     conn.on('open', () => {
       const member = {
         id: conn.peer,
-        name: conn.metadata?.name || 'Unknown',
+        name: this._sanitizeName(conn.metadata?.name),
         isHost: false,
         setsCompleted: 0,
         isFinished: false
@@ -108,6 +110,7 @@ export const Group = {
    */
   _setupHostListeners(conn, member) {
     conn.on('data', (msg) => {
+      if (!this._isValidMessage(msg)) return;
       switch (msg.type) {
         case MSG_TYPES.SET_COMPLETE:
           member.setsCompleted = msg.data.setNumber;
@@ -135,6 +138,7 @@ export const Group = {
    */
   _setupMemberListeners(conn) {
     conn.on('data', (msg) => {
+      if (!this._isValidMessage(msg)) return;
       switch (msg.type) {
         case MSG_TYPES.MEMBER_LIST:
           this.members = msg.data;
@@ -272,13 +276,22 @@ export const Group = {
   getMembers() { return [...this.members]; },
   getRoomCode() { return this.roomCode; },
 
-  /**
-   * Generate a 4-character room code using unambiguous characters.
-   */
+  _sanitizeName(name) {
+    if (typeof name !== 'string') return 'Unknown';
+    return name.slice(0, MAX_NAME_LENGTH).replace(/[<>&"'/]/g, '');
+  },
+
+  _isValidMessage(msg) {
+    if (msg === null || typeof msg !== 'object') return false;
+    if (typeof msg.type !== 'string') return false;
+    return Object.values(MSG_TYPES).includes(msg.type);
+  },
+
   _generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const values = crypto.getRandomValues(new Uint8Array(ROOM_CODE_LENGTH));
     let code = '';
-    for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    for (let i = 0; i < ROOM_CODE_LENGTH; i++) code += chars[values[i] % chars.length];
     return code;
   },
 
