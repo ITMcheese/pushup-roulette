@@ -14,7 +14,7 @@ const KEYS = {
 
 const DEFAULT_PREFERENCES = {
   difficulty: 'all',
-  mode: 'STANDARD',
+  mode: 'standard',
   soundEnabled: true,
   vibrationEnabled: true,
   theme: 'dark'
