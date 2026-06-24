@@ -38,21 +38,19 @@ workflows:
           echo "DELIMITER" >> $CM_ENV
       - name: Revoke old distribution certificates
         script: |
-          echo "Listing existing iOS Distribution certificates..."
-          CERT_LIST=$(app-store-connect certificates list \
-            --type IOS_DISTRIBUTION 2>&1) || true
-          echo "$CERT_LIST"
+          echo "Listing existing distribution certificates..."
+          for cert_type in DISTRIBUTION IOS_DISTRIBUTION; do
+            echo "Checking type: $cert_type"
+            CERT_LIST=$(app-store-connect certificates list \
+              --type "$cert_type" 2>&1) || true
+            echo "$CERT_LIST"
 
-          CERT_IDS=$(echo "$CERT_LIST" | grep 'id:' | awk '{print $2}')
+            CERT_IDS=$(echo "$CERT_LIST" | grep -E '^\s+id:' | awk '{print $2}')
 
-          if [ -z "$CERT_IDS" ]; then
-            echo "No existing certificates found, skipping revocation"
-            exit 0
-          fi
-
-          for cert_id in $CERT_IDS; do
-            echo "Revoking certificate $cert_id..."
-            app-store-connect certificates delete "$cert_id" 2>&1 || true
+            for cert_id in $CERT_IDS; do
+              echo "Revoking certificate $cert_id (type: $cert_type)..."
+              app-store-connect certificates delete "$cert_id" 2>&1 || true
+            done
           done
           echo "Certificate cleanup complete"
       - name: Fetch signing files
