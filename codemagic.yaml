@@ -107,6 +107,16 @@ workflows:
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
+      - name: Set incrementing build number
+        script: |
+          # Apple requires every uploaded build to have a higher CFBundleVersion
+          # than the last. Use Codemagic's ever-incrementing build index
+          # (fallback: a timestamp) so uploads never collide again.
+          BUILD_NUM=${BUILD_NUMBER:-$(date +%s)}
+          echo "Setting CFBundleVersion (CURRENT_PROJECT_VERSION) to $BUILD_NUM"
+          cd ios/App
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9.]*;/CURRENT_PROJECT_VERSION = ${BUILD_NUM};/g" App.xcodeproj/project.pbxproj
+          grep -n "CURRENT_PROJECT_VERSION" App.xcodeproj/project.pbxproj
       - name: Build ipa for distribution
         script: |
           xcode-project build-ipa \
