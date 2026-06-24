@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="Bodyweight Roulette — Spin. Train. Conquer. A random bodyweight workout generator PWA for push-ups, squats, planks, and more." />
+  <title>Bodyweight Roulette</title>
+
+  <!-- Manifest & Favicon -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- PeerJS -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <!-- App -->
+  <script defer type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- ================================================
+         VIEW 1: MAIN SCREEN
+         ================================================ -->
+    <div id="view-main" class="view">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-actions">
+          <button id="btn-theme" class="icon-btn" aria-label="Toggle theme">🌙</button>
+        </div>
+        <div class="header-actions">
+          <button id="btn-progress" class="icon-btn" aria-label="View progress">📊</button>
+          <button id="btn-settings" class="icon-btn" aria-label="Settings">⚙️</button>
+        </div>
+      </header>
+
+      <!-- Section Label -->
+      <p class="section-label">Today's Challenge</p>
+
+      <!-- Challenge Card -->
+      <div id="challenge-card" class="challenge-card">
+        <span id="challenge-icon" class="challenge-icon">💪</span>
+        <span id="challenge-difficulty" class="difficulty-badge" data-difficulty="intermediate">Intermediate</span>
+        <h1 id="challenge-name" class="challenge-name">Standard Push-Up</h1>
+        <p class="challenge-stats">
+          <span id="challenge-sets">4</span> sets &times; <span id="challenge-reps">15</span> reps
+          &nbsp;·&nbsp; rest: <span id="challenge-rest">45s</span>
+        </p>
+      </div>
+
+      <!-- Roulette Window -->
+      <div class="roulette-wrapper">
+        <div class="roulette-highlight"></div>
+        <div id="roulette-window" class="roulette-window">
+          <div id="roulette-strip" class="roulette-strip">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Spin Button -->
+      <button id="btn-spin" class="btn btn-primary btn-spin">🎰 SPIN</button>
+
+      <!-- Action Buttons -->
+      <div class="action-row">
+        <button id="btn-start" class="btn btn-primary">▶ Start Workout</button>
+        <button id="btn-skip" class="btn btn-secondary">⏭ Skip</button>
+      </div>
+
+      <!-- Group Workout -->
+      <button id="btn-group" class="btn btn-secondary btn-group">👥 Group Workout</button>
+      <div id="group-badge" class="group-badge hidden">
+        <span class="member-status"></span>
+        <span id="group-badge-count">0</span> members connected
+      </div>
+    </div>
+
+    <!-- ================================================
+         VIEW 2: WORKOUT SCREEN
+         ================================================ -->
+    <div id="view-workout" class="view hidden">
+      <!-- Back / Quit -->
+      <div class="back-row">
+        <button id="btn-quit-workout" class="icon-btn" aria-label="Quit workout">✕</button>
+        <h2 id="workout-exercise" class="workout-exercise">Standard Push-Up</h2>
+        <button id="btn-workout-preview" class="icon-btn" aria-label="View exercise">📖</button>
+      </div>
+
+      <!-- Status -->
+      <p id="workout-status" class="workout-status active">Push It!</p>
+
+      <!-- Circular Progress Ring -->
+      <div class="timer-container">
+        <svg id="workout-progress-ring" viewBox="0 0 200 200" width="200" height="200">
+          <circle class="progress-ring-bg" cx="100" cy="100" r="90" />
+          <circle class="progress-ring-fill" cx="100" cy="100" r="90"
+                  stroke-dasharray="565.49"
+                  stroke-dashoffset="0" />
+        </svg>
+        <span id="workout-timer" class="timer-display">0:45</span>
+      </div>
+
+      <!-- Play/Pause Button outside the circle -->
+      <div class="workout-controls">
+        <button id="btn-toggle-timer" class="btn-toggle-timer" aria-label="Play/Pause timer">⏸</button>
+      </div>
+
+      <!-- Workout Info Grid -->
+      <div class="workout-info-grid">
+        <div class="workout-info-item">
+          <span class="workout-info-label">SET</span>
+          <span id="workout-set-display" class="workout-info-value">1 / 4</span>
+        </div>
+        <div class="workout-info-item">
+          <span class="workout-info-label">REPS</span>
+          <span id="workout-reps-display" class="workout-info-value">15</span>
+        </div>
+      </div>
+
+      <!-- Time Controls (always visible, host-only in group) -->
+      <div id="time-controls" class="time-controls">
+        <div class="time-control-row">
+          <button id="btn-work-minus" class="btn-time-control" aria-label="Decrease work time">−5s</button>
+          <div class="time-control-info">
+            <span class="time-control-label">WORK</span>
+            <span id="work-time-display" class="time-control-value">0:45</span>
+          </div>
+          <button id="btn-work-plus" class="btn-time-control" aria-label="Increase work time">+5s</button>
+        </div>
+        <div class="time-control-row">
+          <button id="btn-rest-minus" class="btn-time-control" aria-label="Decrease rest time">−5s</button>
+          <div class="time-control-info">
+            <span class="time-control-label">REST</span>
+            <span id="rest-time-display" class="time-control-value">0:30</span>
+          </div>
+          <button id="btn-rest-plus" class="btn-time-control" aria-label="Increase rest time">+5s</button>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="workout-actions">
+        <button id="btn-set-complete" class="btn btn-primary">✓ Set Complete</button>
+        <button id="btn-skip-rest" class="btn btn-secondary hidden">⏩ Skip Rest</button>
+      </div>
+
+      <!-- Group Members Progress (hidden by default) -->
+      <div id="group-workout-members" class="group-workout-members hidden">
+        <h3>Group Progress</h3>
+        <!-- Member progress cards populated by JS -->
+      </div>
+    </div>
+
+    <!-- ================================================
+         VIEW 3: COMPLETION SCREEN
+         ================================================ -->
+    <div id="view-complete" class="view hidden">
+      <!-- Animation -->
+      <div id="complete-animation" class="complete-animation">🏆</div>
+
+      <!-- Heading -->
+      <h2 class="complete-heading">Workout Complete</h2>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div id="complete-total-pushups" class="stat-value">0</div>
+          <div class="stat-label">Total Reps</div>
+        </div>
+        <div class="stat-card">
+          <div id="complete-total-sets" class="stat-value">0</div>
+          <div class="stat-label">Total Sets</div>
+        </div>
+        <div class="stat-card">
+          <div id="complete-duration" class="stat-value">0:00</div>
+          <div class="stat-label">Duration</div>
+        </div>
+        <div class="stat-card">
+          <div id="complete-calories" class="stat-value">0</div>
+          <div class="stat-label">Calories</div>
+        </div>
+      </div>
+
+      <!-- Group Results (hidden by default) -->
+      <div id="group-results" class="group-results hidden">
+        <h3>Group Results</h3>
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Actions -->
+      <div class="complete-actions">
+        <button id="btn-complete-spin" class="btn btn-primary">🎰 Spin Again</button>
+        <button id="btn-save-workout" class="btn btn-secondary">💾 Save &amp; Close</button>
+      </div>
+    </div>
+
+    <!-- ================================================
+         VIEW 4: PROGRESS SCREEN
+         ================================================ -->
+    <div id="view-progress" class="view hidden">
+      <!-- Back -->
+      <div class="back-row">
+        <button id="btn-back-progress" class="icon-btn" aria-label="Back">←</button>
+        <h2 class="view-title">Your Progress</h2>
+      </div>
+
+      <!-- Stats Cards Row -->
+      <div class="progress-stats-row">
+        <div class="progress-stat-card">
+          <div id="stats-total-pushups" class="stat-value">0</div>
+          <div class="stat-label">Total Reps</div>
+        </div>
+        <div class="progress-stat-card">
+          <div id="stats-total-workouts" class="stat-value">0</div>
+          <div class="stat-label">Workouts</div>
+        </div>
+        <div class="progress-stat-card">
+          <div id="stats-current-streak" class="stat-value">
+            0 <span class="streak-fire">🔥</span>
+          </div>
+          <div class="stat-label">Current Streak</div>
+        </div>
+        <div class="progress-stat-card">
+          <div id="stats-longest-streak" class="stat-value">0</div>
+          <div class="stat-label">Longest Streak</div>
+        </div>
+      </div>
+
+      <!-- Favorite Variation -->
+      <div class="favorite-section">
+        <div class="favorite-label">Favorite Variation</div>
+        <div id="stats-favorite" class="favorite-value">—</div>
+      </div>
+
+      <!-- Weekly Chart -->
+      <div class="chart-container">
+        <canvas id="stats-chart" width="300" height="200"></canvas>
+      </div>
+
+      <!-- Achievements -->
+      <h3 class="section-heading">Achievements</h3>
+      <div id="badge-gallery" class="badge-gallery">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- ================================================
+         VIEW 5: SETTINGS SCREEN
+         ================================================ -->
+    <div id="view-settings" class="view hidden">
+      <!-- Back -->
+      <div class="back-row">
+        <button id="btn-back-settings" class="icon-btn" aria-label="Back">←</button>
+        <h2 class="view-title">Settings</h2>
+      </div>
+
+      <!-- Settings List -->
+      <div class="settings-list">
+        <!-- Difficulty -->
+        <div class="setting-row">
+          <span class="setting-label">Difficulty</span>
+          <select id="setting-difficulty" class="setting-select">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+            <option value="elite">Elite</option>
+            <option value="all" selected>All</option>
+          </select>
+        </div>
+
+        <!-- Category -->
+        <div class="setting-row">
+          <span class="setting-label">Focus</span>
+          <select id="setting-category" class="setting-select">
+            <option value="all" selected>All</option>
+            <option value="upper_push">Upper Body Pushing</option>
+            <option value="upper_pull">Upper Body Pulling</option>
+            <option value="lower">Lower Body</option>
+            <option value="core">Core & Conditioners</option>
+          </select>
+        </div>
+
+        <!-- Mode -->
+        <div class="setting-row">
+          <span class="setting-label">Mode</span>
+          <select id="setting-mode" class="setting-select">
+            <option value="quick-burn">Quick Burn</option>
+            <option value="standard" selected>Standard</option>
+            <option value="warrior">Warrior</option>
+            <option value="chaos">Chaos</option>
+          </select>
+        </div>
+
+        <!-- Sound -->
+        <div class="setting-row">
+          <span class="setting-label">Sound</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setting-sound" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Vibration -->
+        <div class="setting-row">
+          <span class="setting-label">Vibration</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setting-vibration" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Feedback Section -->
+      <div class="feedback-section-settings">
+        <h3 class="section-heading" style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1.2rem;">Improvement Feedback</h3>
+        <p class="settings-help-text" style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
+          Tell us how we can improve this app. Your feedback is stored locally and helps shape future updates!
+        </p>
+        <textarea id="feedback-input" class="feedback-textarea" placeholder="I would love to see..." rows="3" style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--color-border); background-color: var(--color-bg-dark); color: var(--color-text-primary); font-family: inherit; font-size: 0.9rem; resize: none; margin-bottom: 0.75rem;"></textarea>
+        <button id="btn-submit-feedback" class="btn btn-primary" style="width: 100%;">Submit Feedback</button>
+      </div>
+    </div>
+
+    <!-- ================================================
+         VIEW 6: GROUP LOBBY
+         ================================================ -->
+    <div id="view-group" class="view hidden">
+      <!-- Back -->
+      <div class="back-row">
+        <button id="btn-back-group" class="icon-btn" aria-label="Back">←</button>
+        <h2 class="view-title">Group Workout</h2>
+      </div>
+
+      <!-- HOST SECTION -->
+      <div id="group-host-section" class="hidden">
+        <div id="group-code" class="room-code">----</div>
+        <p class="room-subtitle">Share this code with friends</p>
+
+        <!-- Connected Members -->
+        <ul id="group-members" class="member-list">
+          <!-- Populated by JS -->
+        </ul>
+        <p id="group-count" class="group-member-count">0 members connected</p>
+
+        <!-- Spin for Group -->
+        <button id="btn-group-spin" class="btn btn-primary btn-spin">🎰 Spin for Group</button>
+      </div>
+
+      <!-- JOIN SECTION -->
+      <div id="group-join-section">
+        <div class="input-group">
+          <input
+            type="text"
+            id="group-name-input"
+            class="input-field"
+            placeholder="Your Name"
+            autocomplete="off"
+          />
+          <input
+            type="text"
+            id="group-code-input"
+            class="input-field"
+            placeholder="Enter Code"
+            maxlength="4"
+            style="text-transform: uppercase; letter-spacing: 4px; text-align: center; font-family: var(--font-display); font-size: 1.4rem;"
+          />
+          <button id="btn-join-group" class="btn btn-primary">Join Group</button>
+        </div>
+
+        <div class="group-divider">or</div>
+
+        <button id="btn-create-group" class="btn btn-secondary" style="width:100%;">Create Group</button>
+      </div>
+    </div>
+
+  </div><!-- /.app-container -->
+
+  <!-- Exercise Preview Overlay -->
+  <div id="exercise-preview" class="exercise-preview hidden">
+    <div class="exercise-preview-backdrop"></div>
+    <div class="exercise-preview-content">
+      <div class="exercise-preview-image-container">
+        <img id="preview-image" class="exercise-preview-image" src="" alt="Exercise illustration" />
+      </div>
+      <div class="exercise-preview-info">
+        <h2 id="preview-name" class="exercise-preview-name"></h2>
+        <p id="preview-description" class="exercise-preview-description"></p>
+        <div class="exercise-preview-meta">
+          <span id="preview-muscle" class="exercise-preview-muscle"></span>
+          <span id="preview-difficulty" class="exercise-preview-difficulty" data-difficulty=""></span>
+        </div>
+        <div class="exercise-preview-stats">
+          <span id="preview-sets" class="exercise-preview-stat"></span>
+          <span class="exercise-preview-stat-divider">×</span>
+          <span id="preview-reps" class="exercise-preview-stat"></span>
+        </div>
+      </div>
+      <button id="btn-begin-workout" class="btn btn-primary btn-begin">💪 LET'S GO</button>
+      <button id="btn-close-preview" class="btn btn-secondary btn-close-preview">← Back</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+</body>
+</html>

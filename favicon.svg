@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0f"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88"/>
+      <stop offset="100%" style="stop-color:#00cc6a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Roulette wheel outer ring -->
+  <circle cx="256" cy="220" r="140" fill="none" stroke="url(#glow)" stroke-width="8" opacity="0.3"/>
+  <circle cx="256" cy="220" r="120" fill="none" stroke="url(#glow)" stroke-width="4" opacity="0.5"/>
+  <!-- Tick marks on wheel -->
+  <g stroke="#00ff88" stroke-width="3" opacity="0.4">
+    <line x1="256" y1="80" x2="256" y2="95"/>
+    <line x1="256" y1="345" x2="256" y2="360"/>
+    <line x1="116" y1="220" x2="131" y2="220"/>
+    <line x1="381" y1="220" x2="396" y2="220"/>
+  </g>
+  <!-- Spin arrow at top -->
+  <polygon points="256,62 270,87 242,87" fill="#00ff88"/>
+  <!-- Person silhouette (exercising figure) -->
+  <g transform="translate(256,215)" fill="#00ff88">
+    <!-- Head -->
+    <circle cx="0" cy="-55" r="16"/>
+    <!-- Body -->
+    <line x1="0" y1="-39" x2="0" y2="10" stroke="#00ff88" stroke-width="7" stroke-linecap="round"/>
+    <!-- Arms raised -->
+    <line x1="0" y1="-28" x2="-30" y2="-52" stroke="#00ff88" stroke-width="6" stroke-linecap="round"/>
+    <line x1="0" y1="-28" x2="30" y2="-52" stroke="#00ff88" stroke-width="6" stroke-linecap="round"/>
+    <!-- Legs (lunge stance) -->
+    <line x1="0" y1="10" x2="-25" y2="50" stroke="#00ff88" stroke-width="6" stroke-linecap="round"/>
+    <line x1="0" y1="10" x2="25" y2="50" stroke="#00ff88" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <!-- Text -->
+  <text x="256" y="415" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="800" font-size="52" fill="#ffffff" letter-spacing="6">BODY</text>
+  <text x="256" y="462" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="300" font-size="32" fill="#00ff88" letter-spacing="8">ROULETTE</text>
+</svg>
