@@ -39,28 +39,69 @@ workflows:
       - name: Revoke old distribution certificates
         script: |
           python3 << 'PYEOF'
-          import os, json, urllib.request, ssl, time, jwt
+          import os, sys, json, urllib.request, ssl, time, subprocess, re
 
           key_id = os.environ.get('APP_STORE_CONNECT_KEY_IDENTIFIER', '')
           issuer_id = os.environ.get('APP_STORE_CONNECT_ISSUER_ID', '')
+          raw_key = os.environ.get('APP_STORE_CONNECT_PRIVATE_KEY', '')
 
-          # Read the .p8 key file directly (Codemagic stores it here)
-          key_path = os.path.expanduser(f'~/private_keys/AuthKey_{key_id}.p8')
-          if not os.path.exists(key_path):
-              print(f"Key file not found at {key_path}, skipping")
-              exit(0)
+          if not all([key_id, issuer_id, raw_key]):
+              print("Missing credentials, skipping")
+              sys.exit(0)
 
-          with open(key_path, 'r') as f:
-              private_key = f.read()
+          print(f"Key ID: {key_id}")
+          print(f"Raw key length: {len(raw_key)}")
+          print(f"Has real newlines: {chr(10) in raw_key}")
+          print(f"Has literal backslash-n: {chr(92)+chr(110) in raw_key}")
+          print(f"Starts with: {repr(raw_key[:60])}")
 
-          print(f"Key ID: {key_id}, Key file loaded ({len(private_key)} bytes)")
+          # Fix PEM formatting
+          private_key = raw_key
 
-          token = jwt.encode(
-              {'iss': issuer_id, 'iat': int(time.time()),
-               'exp': int(time.time()) + 1200, 'aud': 'appstoreconnect-v1'},
-              private_key, algorithm='ES256', headers={'kid': key_id}
-          )
+          # Replace literal \n (backslash + n) with actual newlines
+          if chr(92)+chr(110) in private_key:
+              private_key = private_key.replace(chr(92)+chr(110), chr(10))
+              print("Fixed literal backslash-n to newlines")
 
+          # If still no newlines, try to add them around PEM markers
+          if chr(10) not in private_key and 'BEGIN' in private_key:
+              private_key = re.sub(r'(-----BEGIN [^-]+-----)', r'\1\n', private_key)
+              private_key = re.sub(r'(-----END [^-]+-----)', '\n' + r'\1\n', private_key)
+              print("Added newlines around PEM markers")
+
+          # If key is just base64 without headers
+          if '-----BEGIN' not in private_key:
+              private_key = '-----BEGIN PRIVATE KEY-----\n' + private_key.strip() + '\n-----END PRIVATE KEY-----\n'
+              print("Added PEM headers")
+
+          # Ensure trailing newline
+          if not private_key.endswith('\n'):
+              private_key += '\n'
+
+          print(f"Processed key lines: {len(private_key.splitlines())}")
+          print(f"First line: {private_key.splitlines()[0]}")
+
+          # Generate JWT
+          import jwt
+          try:
+              token = jwt.encode(
+                  {'iss': issuer_id, 'iat': int(time.time()),
+                   'exp': int(time.time()) + 1200, 'aud': 'appstoreconnect-v1'},
+                  private_key, algorithm='ES256', headers={'kid': key_id})
+              print("JWT generated successfully")
+          except Exception as e:
+              print(f"JWT failed: {e}")
+              print("Falling back to codemagic library...")
+              try:
+                  from codemagic.apple.app_store_connect import AppStoreConnectApiClient
+                  client = AppStoreConnectApiClient(key_id, issuer_id, raw_key)
+                  token = client._get_jwt_token()
+                  print("Got JWT from codemagic library")
+              except Exception as e2:
+                  print(f"Fallback also failed: {e2}")
+                  sys.exit(1)
+
+          # Revoke certificates
           headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
           ctx = ssl.create_default_context()
 
@@ -73,23 +114,20 @@ workflows:
               except Exception as e:
                   print(f"Error listing {cert_type}: {e}")
                   continue
-
               certs = data.get('data', [])
               print(f"Found {len(certs)} {cert_type} certificate(s)")
-
               for cert in certs:
                   cert_id = cert['id']
-                  print(f"Revoking certificate {cert_id}...")
+                  print(f"Revoking {cert_id}...")
                   del_req = urllib.request.Request(
                       f'https://api.appstoreconnect.apple.com/v1/certificates/{cert_id}',
                       method='DELETE', headers=headers)
                   try:
                       urllib.request.urlopen(del_req, context=ctx)
-                      print(f"  Revoked {cert_id}")
+                      print(f"  Revoked")
                   except Exception as e:
-                      print(f"  Warning: {e}")
-
-          print("Certificate cleanup complete")
+                      print(f"  Error: {e}")
+          print("Done")
           PYEOF
       - name: Fetch signing files
         script: |
