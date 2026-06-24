@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// Bodyweight Workout Roulette — Main App Controller
+// Calisthenics Roulette — Main App Controller
 // Central orchestrator that wires every module together.
 // ─────────────────────────────────────────────────────────────
 

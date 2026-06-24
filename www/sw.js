@@ -1,7 +1,7 @@
-// Bodyweight Workout Roulette Service Worker
+// Calisthenics Roulette Service Worker
 // Cache-first strategy for full offline support
 
-const CACHE_NAME = 'bodyweight-workout-roulette-v10';
+const CACHE_NAME = 'calisthenics-roulette-v10';
 
 const ASSETS_TO_CACHE = [
   '/',

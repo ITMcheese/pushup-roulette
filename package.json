@@ -1,7 +1,7 @@
 {
-  "name": "bodyweight-workout-roulette",
+  "name": "calisthenics-roulette",
   "version": "1.0.0",
-  "description": "Bodyweight Workout Roulette: Spin for a random bodyweight exercise challenge",
+  "description": "Calisthenics Roulette: Spin for a random calisthenics exercise challenge",
   "scripts": {
     "cap:sync": "cap sync"
   },

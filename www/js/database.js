@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-//  database.js — Bodyweight Roulette Exercise Catalog (Restructured)
+//  database.js — Calisthenics Roulette Exercise Catalog (Restructured)
 // ─────────────────────────────────────────────────────────────
 
 export const DIFFICULTIES = {

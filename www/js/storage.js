@@ -1,5 +1,5 @@
 /**
- * Bodyweight Workout Roulette — Storage Layer
+ * Calisthenics Roulette — Storage Layer
  * Synchronous LocalStorage persistence for all app data.
  */
 

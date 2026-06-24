@@ -1,5 +1,5 @@
 /**
- * Bodyweight Workout Roulette — Achievements System
+ * Calisthenics Roulette — Achievements System
  * Gamification badges with automatic unlock detection and badge gallery rendering.
  */
 
@@ -9,7 +9,7 @@ const ACHIEVEMENT_DEFS = [
   { id: 'first_workout', name: 'First Rep', description: 'Complete your first workout', icon: '🌟', check: (stats) => stats.totalWorkouts >= 1 },
   { id: 'push_100', name: 'Century Club', description: '100 total reps', icon: '💯', check: (stats) => stats.totalPushups >= 100 },
   { id: 'push_1000', name: 'Thousand Strong', description: '1,000 total reps', icon: '🏋️', check: (stats) => stats.totalPushups >= 1000 },
-  { id: 'push_10000', name: 'Bodyweight Legend', description: '10,000 total reps', icon: '👑', check: (stats) => stats.totalPushups >= 10000 },
+  { id: 'push_10000', name: 'Calisthenics Legend', description: '10,000 total reps', icon: '👑', check: (stats) => stats.totalPushups >= 10000 },
   { id: 'streak_7', name: 'Week Warrior', description: '7-day streak', icon: '🔥', check: (stats) => stats.currentStreak >= 7 },
   { id: 'streak_30', name: 'Monthly Monster', description: '30-day streak', icon: '⚡', check: (stats) => stats.currentStreak >= 30 },
   { id: 'workouts_10', name: 'Getting Serious', description: 'Complete 10 workouts', icon: '💪', check: (stats) => stats.totalWorkouts >= 10 },

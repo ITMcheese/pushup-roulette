@@ -1,5 +1,5 @@
 /**
- * Bodyweight Workout Roulette — Theme Manager
+ * Calisthenics Roulette — Theme Manager
  * Handles dark/light mode toggling, persistence, and system preference detection.
  */
 

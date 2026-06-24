@@ -1,7 +1,7 @@
 {
-  "name": "Bodyweight Workout Roulette",
-  "short_name": "BW Roulette",
-  "description": "Eliminate workout decision fatigue. Spin for a random bodyweight exercise challenge and crush it.",
+  "name": "Calisthenics Roulette",
+  "short_name": "Calisthenics",
+  "description": "Eliminate workout decision fatigue. Spin for a random calisthenics exercise challenge and crush it.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0f",

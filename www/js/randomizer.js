@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-//  randomizer.js — Bodyweight Roulette Challenge Generator
+//  randomizer.js — Calisthenics Roulette Challenge Generator
 // ─────────────────────────────────────────────────────────────
 
 import { getRandomExercise, DIFFICULTIES } from './database.js';
