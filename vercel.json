@@ -1,4 +1,7 @@
 {
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "framework": null,
   "cleanUrls": true,
   "headers": [
     {
@@ -8,5 +11,14 @@
         { "key": "Service-Worker-Allowed", "value": "/" }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/css/(.*)", "destination": "/www/css/$1" },
+    { "source": "/js/(.*)", "destination": "/www/js/$1" },
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/manifest.json", "destination": "/www/manifest.json" },
+    { "source": "/sw.js", "destination": "/www/sw.js" },
+    { "source": "/favicon.svg", "destination": "/www/favicon.svg" },
+    { "source": "/(.*)", "destination": "/www/index.html" }
   ]
 }

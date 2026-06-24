@@ -1,0 +1,15 @@
+{
+  "name": "pushup-roulette",
+  "version": "1.0.0",
+  "description": "Bodyweight Roulette: Spin for a random bodyweight exercise challenge",
+  "scripts": {
+    "cap:sync": "cap sync"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}

@@ -1,0 +1,5 @@
+.vercel
+node_modules/
+ios/App/Pods/
+ios/App/build/
+.DS_Store
