@@ -38,53 +38,23 @@ workflows:
           echo "DELIMITER" >> $CM_ENV
       - name: Revoke old distribution certificates
         script: |
-          python3 << 'PYEOF'
-          import jwt, time, os, json, urllib.request, ssl
+          echo "Listing existing iOS Distribution certificates..."
+          CERT_LIST=$(app-store-connect certificates list \
+            --type IOS_DISTRIBUTION 2>&1) || true
+          echo "$CERT_LIST"
 
-          key_id = os.environ.get('APP_STORE_CONNECT_KEY_IDENTIFIER', '')
-          issuer_id = os.environ.get('APP_STORE_CONNECT_ISSUER_ID', '')
-          private_key = os.environ.get('APP_STORE_CONNECT_PRIVATE_KEY', '')
+          CERT_IDS=$(echo "$CERT_LIST" | grep 'id:' | awk '{print $2}')
 
-          if not all([key_id, issuer_id, private_key]):
-              print("App Store Connect credentials not found, skipping revocation")
-              exit(0)
+          if [ -z "$CERT_IDS" ]; then
+            echo "No existing certificates found, skipping revocation"
+            exit 0
+          fi
 
-          payload = {
-              'iss': issuer_id,
-              'iat': int(time.time()),
-              'exp': int(time.time()) + 1200,
-              'aud': 'appstoreconnect-v1'
-          }
-          token = jwt.encode(payload, private_key, algorithm='ES256', headers={'kid': key_id})
-
-          headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-          ctx = ssl.create_default_context()
-
-          # List iOS Distribution certificates
-          url = 'https://api.appstoreconnect.apple.com/v1/certificates?filter[certificateType]=IOS_DISTRIBUTION'
-          req = urllib.request.Request(url, headers=headers)
-          resp = urllib.request.urlopen(req, context=ctx)
-          data = json.loads(resp.read())
-
-          certs = data.get('data', [])
-          print(f"Found {len(certs)} iOS Distribution certificate(s)")
-
-          for cert in certs:
-              cert_id = cert['id']
-              print(f"Revoking certificate {cert_id}...")
-              del_req = urllib.request.Request(
-                  f'https://api.appstoreconnect.apple.com/v1/certificates/{cert_id}',
-                  method='DELETE',
-                  headers=headers
-              )
-              try:
-                  urllib.request.urlopen(del_req, context=ctx)
-                  print(f"  Revoked {cert_id}")
-              except Exception as e:
-                  print(f"  Warning: could not revoke {cert_id}: {e}")
-
-          print("Certificate cleanup complete")
-          PYEOF
+          for cert_id in $CERT_IDS; do
+            echo "Revoking certificate $cert_id..."
+            app-store-connect certificates delete "$cert_id" 2>&1 || true
+          done
+          echo "Certificate cleanup complete"
       - name: Fetch signing files
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
