@@ -1,6 +1,6 @@
 {
   "appId": "com.bodyweight.roulette",
-  "appName": "Bodyweight Roulette",
+  "appName": "Bodyweight Workout Roulette",
   "webDir": "www",
   "server": {
     "androidScheme": "https"

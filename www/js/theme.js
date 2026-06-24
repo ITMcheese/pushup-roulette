@@ -1,5 +1,5 @@
 /**
- * Push-Up Roulette — Theme Manager
+ * Bodyweight Workout Roulette — Theme Manager
  * Handles dark/light mode toggling, persistence, and system preference detection.
  */
 

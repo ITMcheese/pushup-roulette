@@ -1,5 +1,5 @@
 /**
- * Push-Up Roulette — Storage Layer
+ * Bodyweight Workout Roulette — Storage Layer
  * Synchronous LocalStorage persistence for all app data.
  */
 

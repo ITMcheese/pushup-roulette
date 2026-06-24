@@ -1,6 +1,6 @@
 {
-  "name": "Bodyweight Roulette",
-  "short_name": "BWRoulette",
+  "name": "Bodyweight Workout Roulette",
+  "short_name": "BW Roulette",
   "description": "Eliminate workout decision fatigue. Spin for a random bodyweight exercise challenge and crush it.",
   "start_url": "/",
   "display": "standalone",

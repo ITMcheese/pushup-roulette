@@ -1,7 +1,7 @@
 {
-  "name": "pushup-roulette",
+  "name": "bodyweight-workout-roulette",
   "version": "1.0.0",
-  "description": "Bodyweight Roulette: Spin for a random bodyweight exercise challenge",
+  "description": "Bodyweight Workout Roulette: Spin for a random bodyweight exercise challenge",
   "scripts": {
     "cap:sync": "cap sync"
   },

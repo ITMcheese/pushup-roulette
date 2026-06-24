@@ -9,7 +9,7 @@
 const MAX_MEMBERS = 30;
 const MAX_NAME_LENGTH = 30;
 const ROOM_CODE_LENGTH = 6;
-const ROOM_PREFIX = 'pushroulette-';
+const ROOM_PREFIX = 'bwroulette-';
 
 const MSG_TYPES = {
   SPIN_RESULT: 'spin_result',

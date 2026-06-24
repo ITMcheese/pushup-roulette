@@ -2,7 +2,7 @@
  * Stats — Progress tracking and weekly bar-chart visualisation.
  *
  * Renders lifetime statistics into DOM elements and draws a 7-day
- * push-up bar chart on an HTML <canvas> (no libraries).
+ * workout bar chart on an HTML <canvas> (no libraries).
  * All data is pulled from the Storage module.
  */
 

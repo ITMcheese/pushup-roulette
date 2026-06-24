@@ -1,7 +1,7 @@
-// Bodyweight Roulette Service Worker
+// Bodyweight Workout Roulette Service Worker
 // Cache-first strategy for full offline support
 
-const CACHE_NAME = 'bodyweight-roulette-v9';
+const CACHE_NAME = 'bodyweight-workout-roulette-v10';
 
 const ASSETS_TO_CACHE = [
   '/',

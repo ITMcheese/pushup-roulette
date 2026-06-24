@@ -1,5 +1,5 @@
 /**
- * Push-Up Roulette — Achievements System
+ * Bodyweight Workout Roulette — Achievements System
  * Gamification badges with automatic unlock detection and badge gallery rendering.
  */
 

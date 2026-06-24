@@ -1,5 +1,5 @@
 /**
- * Push-Up Roulette — Audio Engine
+ * Bodyweight Workout Roulette — Audio Engine
  * Synthesised sound effects via Web Audio API.
  * Punchy, energetic gaming feel — zero external audio files.
  */
