@@ -211,6 +211,47 @@ function hideExercisePreview() {
   $('exercise-preview').classList.add('hidden');
 }
 
+// ── Tutorial / How it works ─────────────────────────────────
+const TUTORIAL_STEPS = [
+  { icon: '👋', title: 'Welcome to Calisthenics Roulette', body: 'Spin for a random bodyweight workout and crush it. Here\'s a quick tour of how everything works.' },
+  { icon: '🎰', title: 'Spin for a challenge', body: 'Tap <b>SPIN</b> to land on a random exercise, then <b>▶ Start Workout</b> to begin — or <b>⏭ Skip</b> to roll a different one.' },
+  { icon: '📖', title: 'See how it\'s done', body: 'Tap the <b>📖</b> button to view the exercise. Tap the GIF (or the <b>⤢</b> button) to expand it full-screen and watch the whole movement.' },
+  { icon: '⏱️', title: 'During the workout', body: 'A countdown times each set. Use <b>−5s / +5s</b> to adjust work and rest, <b>⏸</b> to pause, and <b>✓ Set Complete</b> when you finish a set.' },
+  { icon: '⚙️', title: 'Difficulty & sound', body: 'Tap the <b>⚙️ gear</b> (top right) to change <b>Difficulty</b>, <b>Focus</b> and <b>Mode</b>, and to turn <b>Sound</b> and <b>Vibration</b> on or off.' },
+  { icon: '👥', title: 'Work out with friends', body: 'Tap <b>👥 Group Workout</b>. <b>Create</b> a group to get a code to share, or <b>Join</b> with a friend\'s code — then everyone spins together.' },
+  { icon: '📊', title: 'Track your progress', body: 'Tap <b>📊</b> (top right) for your total reps, workouts, streaks and the achievements you\'ve unlocked.' },
+  { icon: '🔥', title: 'You\'re ready!', body: 'Reopen this tour anytime from the <b>❓</b> button up top. Now go spin!' }
+];
+let tutorialStep = 0;
+
+function renderTutorialStep() {
+  const s = TUTORIAL_STEPS[tutorialStep];
+  $('tutorial-icon').textContent = s.icon;
+  $('tutorial-title').textContent = s.title;
+  $('tutorial-body').innerHTML = s.body; // static, trusted copy
+  const dots = $('tutorial-dots');
+  dots.innerHTML = '';
+  TUTORIAL_STEPS.forEach((_, i) => {
+    const dot = document.createElement('span');
+    dot.className = 'tutorial-dot' + (i === tutorialStep ? ' active' : '');
+    dots.appendChild(dot);
+  });
+  $('btn-tutorial-back').style.visibility = tutorialStep === 0 ? 'hidden' : 'visible';
+  $('btn-tutorial-next').textContent =
+    tutorialStep === TUTORIAL_STEPS.length - 1 ? 'Got it! 💪' : 'Next →';
+}
+
+function openTutorial() {
+  tutorialStep = 0;
+  renderTutorialStep();
+  $('tutorial-overlay').classList.remove('hidden');
+}
+
+function closeTutorial() {
+  $('tutorial-overlay').classList.add('hidden');
+  try { localStorage.setItem('cr_tutorial_seen', '1'); } catch (e) { /* ignore */ }
+}
+
 // ── Group UI helpers ────────────────────────────────────────
 function updateGroupMemberList(members) {
   // Lobby list
@@ -407,6 +448,31 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
+
+  // ── Unlock audio on the first user interaction (iOS WKWebView) ──
+  let _audioUnlocked = false;
+  const unlockAudioOnce = () => {
+    if (_audioUnlocked) return;
+    _audioUnlocked = true;
+    Audio.init();
+  };
+  document.addEventListener('pointerdown', unlockAudioOnce, { once: true });
+  document.addEventListener('touchstart', unlockAudioOnce, { once: true });
+
+  // ── Tutorial / How it works ─────────────────────────────
+  $('btn-help').addEventListener('click', () => { Audio.buttonPress(); openTutorial(); });
+  $('btn-tutorial-skip').addEventListener('click', closeTutorial);
+  $('btn-tutorial-back').addEventListener('click', () => {
+    if (tutorialStep > 0) { tutorialStep--; renderTutorialStep(); }
+  });
+  $('btn-tutorial-next').addEventListener('click', () => {
+    if (tutorialStep < TUTORIAL_STEPS.length - 1) { tutorialStep++; renderTutorialStep(); }
+    else { closeTutorial(); }
+  });
+  // Auto-show the tour on first launch
+  try {
+    if (!localStorage.getItem('cr_tutorial_seen')) openTutorial();
+  } catch (e) { /* ignore */ }
 
   // ───────────────────────────────────────────────────────
   // EVENT LISTENERS

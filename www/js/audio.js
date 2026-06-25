@@ -92,7 +92,18 @@ export const Audio = {
    * Initialise the AudioContext (call on first user interaction).
    */
   init() {
-    getCtx();
+    const ctx = getCtx();
+    // iOS unlock: playing a one-sample silent buffer from inside a user
+    // gesture fully "unlocks" the AudioContext so later programmatic
+    // sounds (timer beeps, spin ticks) actually play.
+    try {
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch (e) { /* ignore */ }
+    if (ctx.state === 'suspended') ctx.resume();
   },
 
   /**

@@ -51,6 +51,7 @@
           <button id="btn-theme" class="icon-btn" aria-label="Toggle theme">🌙</button>
         </div>
         <div class="header-actions">
+          <button id="btn-help" class="icon-btn" aria-label="How it works">❓</button>
           <button id="btn-progress" class="icon-btn" aria-label="View progress">📊</button>
           <button id="btn-settings" class="icon-btn" aria-label="Settings">⚙️</button>
         </div>
@@ -423,6 +424,23 @@
       </div>
       <button id="btn-begin-workout" class="btn btn-primary btn-begin">💪 LET'S GO</button>
       <button id="btn-close-preview" class="btn btn-secondary btn-close-preview">← Back</button>
+    </div>
+  </div>
+
+  <!-- Tutorial / How it works -->
+  <div id="tutorial-overlay" class="tutorial-overlay hidden">
+    <div class="tutorial-card">
+      <button id="btn-tutorial-skip" class="tutorial-skip" aria-label="Skip tutorial">Skip</button>
+      <div class="tutorial-step">
+        <div id="tutorial-icon" class="tutorial-icon">👋</div>
+        <h2 id="tutorial-title" class="tutorial-title"></h2>
+        <p id="tutorial-body" class="tutorial-body"></p>
+      </div>
+      <div id="tutorial-dots" class="tutorial-dots"></div>
+      <div class="tutorial-nav">
+        <button id="btn-tutorial-back" class="btn btn-secondary tutorial-btn">Back</button>
+        <button id="btn-tutorial-next" class="btn btn-primary tutorial-btn">Next →</button>
+      </div>
     </div>
   </div>
 
