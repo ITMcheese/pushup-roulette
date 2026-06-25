@@ -1509,7 +1509,16 @@ body {
 #view-main .section-label { margin-bottom: 6px; }
 #view-main .challenge-card { padding: clamp(12px, 2.2vh, 24px); }
 #view-main .challenge-icon { font-size: clamp(1.8rem, 5vh, 2.5rem); margin-bottom: 4px; }
-#view-main .challenge-name { font-size: clamp(1.5rem, 4.4vh, 2rem); }
+#view-main .challenge-name {
+  font-size: clamp(1.5rem, 4.4vh, 2rem);
+  line-height: 1.2;
+  height: 2.4em;              /* reserve 2 lines so the card is the SAME size for every exercise */
+  display: flex;
+  align-items: center;        /* center 1-line names within the reserved 2-line space */
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+}
 #view-main .challenge-stats { margin-top: 6px; font-size: clamp(0.9rem, 2.4vh, 1.1rem); }
 #view-main .difficulty-badge { margin-bottom: 4px; }
 
