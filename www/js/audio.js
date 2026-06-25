@@ -12,13 +12,17 @@ let enabled = true;
  * Must be called from a user-gesture handler the first time.
  */
 function getCtx() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  } catch (e) {
+    return null; // audio unavailable — callers must handle null
   }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-  return audioCtx;
 }
 
 /**
@@ -34,6 +38,8 @@ function getCtx() {
  */
 function playTone({ frequency, type = 'sine', duration = 0.1, gain = 0.5, delay = 0, decayTime = 0.08, filter = null }) {
   const ctx = getCtx();
+  if (!ctx) return;
+  try {
   const now = ctx.currentTime + delay;
 
   const osc = ctx.createOscillator();
@@ -55,6 +61,7 @@ function playTone({ frequency, type = 'sine', duration = 0.1, gain = 0.5, delay 
 
   osc.start(now);
   osc.stop(now + duration + 0.05);
+  } catch (e) { /* audio is non-critical — never break the caller */ }
 }
 
 /**
@@ -64,6 +71,8 @@ function playTone({ frequency, type = 'sine', duration = 0.1, gain = 0.5, delay 
  */
 function playNoise(duration = 0.02, gain = 0.4) {
   const ctx = getCtx();
+  if (!ctx) return;
+  try {
   const now = ctx.currentTime;
   const sampleRate = ctx.sampleRate;
   const length = Math.ceil(sampleRate * duration);
@@ -85,6 +94,7 @@ function playNoise(duration = 0.02, gain = 0.4) {
   gainNode.connect(ctx.destination);
   src.start(now);
   src.stop(now + duration + 0.01);
+  } catch (e) { /* audio is non-critical — never break the caller */ }
 }
 
 export const Audio = {
@@ -93,6 +103,7 @@ export const Audio = {
    */
   init() {
     const ctx = getCtx();
+    if (!ctx) return;
     // iOS unlock: playing a one-sample silent buffer from inside a user
     // gesture fully "unlocks" the AudioContext so later programmatic
     // sounds (timer beeps, spin ticks) actually play.
@@ -166,6 +177,7 @@ export const Audio = {
   workoutComplete() {
     if (!enabled) return;
     const ctx = getCtx();
+    if (!ctx) return;
     const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
 
     // Shared lowpass filter for warmth.

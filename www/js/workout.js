@@ -40,6 +40,7 @@ export const Workout = {
   restTimeRemaining:  0,
   activeTimeRemaining:0,      // seconds remaining during active set
   timerInterval:      null,
+  _transitionTimeout: null,   // pending GO!/time's-up transition setTimeout
   startTime:          null,   // workout overall start time
   setStartTime:       null,   // current set start time
   elapsedTime:        0,
@@ -70,7 +71,11 @@ export const Workout = {
    * Begins with a 3-2-1-GO countdown before the first active set.
    */
   start(challenge) {
+    this._clearTimers();              // never overlap with a previous workout
     this.challenge  = challenge;
+    // Guard against missing/invalid timing so the timer always runs.
+    if (!(this.challenge.workTime > 0)) this.challenge.workTime = 30;
+    if (!(this.challenge.rest >= 0))    this.challenge.rest = 30;
     this.currentSet = 1;
     this.totalSets  = challenge.sets;
     this.startTime  = Date.now();
@@ -83,15 +88,23 @@ export const Workout = {
   },
 
   /**
+   * Cancel the active timer AND any pending state-transition timeout.
+   * Centralised so no two timers can ever run at once.
+   */
+  _clearTimers() {
+    if (this.timerInterval) { clearInterval(this.timerInterval); this.timerInterval = null; }
+    if (this._transitionTimeout) { clearTimeout(this._transitionTimeout); this._transitionTimeout = null; }
+  },
+
+  /**
    * Mark the current active set as complete.
    * If it's the last set the workout finishes; otherwise rest begins.
    */
   markSetComplete() {
     if (this.state !== STATES.ACTIVE) return;
 
-    // Stop any active timer
-    clearInterval(this.timerInterval);
-    this.timerInterval = null;
+    // Stop any active timer (and any pending transition)
+    this._clearTimers();
     this.isPaused = false;
 
     if (this.currentSet >= this.totalSets) {
@@ -132,8 +145,7 @@ export const Workout = {
     } else {
       // Pause
       this.isPaused = true;
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
+      this._clearTimers();
 
       this._updateDisplay();
       this._notifyStateChange();
@@ -147,8 +159,7 @@ export const Workout = {
    */
   skipRest() {
     if (this.state !== STATES.RESTING) return;
-    clearInterval(this.timerInterval);
-    this.timerInterval = null;
+    this._clearTimers();
     this.isPaused = false;
     this._advanceToNextSet();
   },
@@ -206,8 +217,7 @@ export const Workout = {
    * Clean up timers and release wake lock.
    */
   destroy() {
-    clearInterval(this.timerInterval);
-    this.timerInterval = null;
+    this._clearTimers();
     this.isPaused = false;
     this._releaseWakeLock();
     this.state = STATES.IDLE;
@@ -221,6 +231,7 @@ export const Workout = {
   /* ── internal: pre-workout countdown (3-2-1-GO) ────────────────── */
 
   _startPreCountdown(isResume = false) {
+    this._clearTimers();
     this.state = STATES.COUNTDOWN;
     if (!isResume) {
       this.countdownRemaining = PRE_COUNTDOWN_SECS;
@@ -244,7 +255,7 @@ export const Workout = {
         this._updateProgressRing(0);
         Audio.restComplete(); // triumphant sound
 
-        setTimeout(() => {
+        this._transitionTimeout = setTimeout(() => {
           this._enterActiveState();
         }, 600);
         return;
@@ -274,6 +285,7 @@ export const Workout = {
    * User can also press "Set Complete" early.
    */
   _startActiveTimer() {
+    this._clearTimers();
     this._updateTimerDisplay(this._formatTime(Math.ceil(this.activeTimeRemaining)));
     this._updateProgressRing(this.activeTimeRemaining / this.challenge.workTime);
 
@@ -297,7 +309,7 @@ export const Workout = {
         this._updateTimerDisplay('0:00');
         this._updateProgressRing(0);
 
-        setTimeout(() => {
+        this._transitionTimeout = setTimeout(() => {
           if (this.currentSet >= this.totalSets) {
             this._completeWorkout();
           } else {
@@ -327,6 +339,7 @@ export const Workout = {
   /* ── internal: rest timer ──────────────────────────────────────── */
 
   _startRestTimer() {
+    this._clearTimers();
     let lastTimestamp = Date.now();
 
     this._updateTimerDisplay(Math.ceil(this.restTimeRemaining));
@@ -375,8 +388,7 @@ export const Workout = {
     this.state       = STATES.COMPLETE;
     this.elapsedTime = Math.floor((Date.now() - this.startTime) / 1000);
 
-    clearInterval(this.timerInterval);
-    this.timerInterval = null;
+    this._clearTimers();
     this._releaseWakeLock();
 
     Audio.workoutComplete();
