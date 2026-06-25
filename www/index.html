@@ -402,6 +402,11 @@
     <div class="exercise-preview-content">
       <div class="exercise-preview-image-container">
         <img id="preview-image" class="exercise-preview-image" src="" alt="Exercise illustration" />
+        <button id="btn-expand-gif" class="btn-expand-gif" aria-label="Expand to full GIF" title="See the whole GIF">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+        </button>
       </div>
       <div class="exercise-preview-info">
         <h2 id="preview-name" class="exercise-preview-name"></h2>
@@ -419,6 +424,12 @@
       <button id="btn-begin-workout" class="btn btn-primary btn-begin">💪 LET'S GO</button>
       <button id="btn-close-preview" class="btn btn-secondary btn-close-preview">← Back</button>
     </div>
+  </div>
+
+  <!-- Full-size GIF Lightbox -->
+  <div id="gif-lightbox" class="gif-lightbox hidden">
+    <img id="gif-lightbox-image" class="gif-lightbox-image" src="" alt="Exercise illustration (full size)" />
+    <button id="btn-close-gif-lightbox" class="gif-lightbox-close" aria-label="Close full GIF">✕</button>
   </div>
 
   <!-- Toast Notification Container -->

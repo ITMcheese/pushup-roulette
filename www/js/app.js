@@ -461,6 +461,23 @@ document.addEventListener('DOMContentLoaded', () => {
     hideExercisePreview();
   });
 
+  // ── Exercise Preview: Expand GIF to full size ───────────
+  const openGifLightbox = () => {
+    const src = $('preview-image').getAttribute('src');
+    if (!src) return;
+    Audio.buttonPress();
+    $('gif-lightbox-image').src = src;
+    $('gif-lightbox').classList.remove('hidden');
+  };
+  const closeGifLightbox = () => {
+    $('gif-lightbox').classList.add('hidden');
+    $('gif-lightbox-image').src = '';
+  };
+  $('btn-expand-gif').addEventListener('click', (e) => { e.stopPropagation(); openGifLightbox(); });
+  $('preview-image').addEventListener('click', openGifLightbox);
+  // Tap anywhere on the lightbox (backdrop, image, or ✕) closes it
+  $('gif-lightbox').addEventListener('click', closeGifLightbox);
+
   // ── Skip ────────────────────────────────────────────────
   $('btn-skip').addEventListener('click', () => {
     Audio.buttonPress();
