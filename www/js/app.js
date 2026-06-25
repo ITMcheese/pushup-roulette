@@ -212,23 +212,27 @@ function hideExercisePreview() {
 }
 
 // ── Tutorial / How it works ─────────────────────────────────
+// Each step highlights a real on-screen button and points a tooltip at it.
 const TUTORIAL_STEPS = [
-  { icon: '👋', title: 'Welcome to Calisthenics Roulette', body: 'Spin for a random bodyweight workout and crush it. Here\'s a quick tour of how everything works.' },
-  { icon: '🎰', title: 'Spin for a challenge', body: 'Tap <b>SPIN</b> to land on a random exercise, then <b>▶ Start Workout</b> to begin — or <b>⏭ Skip</b> to roll a different one.' },
-  { icon: '📖', title: 'See how it\'s done', body: 'Tap the <b>📖</b> button to view the exercise. Tap the GIF (or the <b>⤢</b> button) to expand it full-screen and watch the whole movement.' },
-  { icon: '⏱️', title: 'During the workout', body: 'A countdown times each set. Use <b>−5s / +5s</b> to adjust work and rest, <b>⏸</b> to pause, and <b>✓ Set Complete</b> when you finish a set.' },
-  { icon: '⚙️', title: 'Difficulty & sound', body: 'Tap the <b>⚙️ gear</b> (top right) to change <b>Difficulty</b>, <b>Focus</b> and <b>Mode</b>, and to turn <b>Sound</b> and <b>Vibration</b> on or off.' },
-  { icon: '👥', title: 'Work out with friends', body: 'Tap <b>👥 Group Workout</b>. <b>Create</b> a group to get a code to share, or <b>Join</b> with a friend\'s code — then everyone spins together.' },
-  { icon: '📊', title: 'Track your progress', body: 'Tap <b>📊</b> (top right) for your total reps, workouts, streaks and the achievements you\'ve unlocked.' },
-  { icon: '🔥', title: 'You\'re ready!', body: 'Reopen this tour anytime from the <b>❓</b> button up top. Now go spin!' }
+  { target: 'btn-spin',     title: 'Welcome! Start by spinning', body: 'Tap <b>🎰 SPIN</b> to land on a random exercise.' },
+  { target: 'btn-start',    title: 'Start your workout',         body: 'Hit <b>▶ Start Workout</b> to begin the timed sets. Inside you get a countdown with <b>±5s</b>, <b>pause</b>, and a <b>📖</b> to watch the exercise (tap the GIF to expand it).' },
+  { target: 'btn-settings', title: 'Difficulty & sound',         body: 'Open <b>⚙️ Settings</b> to change <b>Difficulty</b>, <b>Focus</b> and <b>Mode</b>, and to turn <b>Sound</b> and <b>Vibration</b> on or off.' },
+  { target: 'btn-group',    title: 'Work out with friends',      body: '<b>Create</b> a group to get a code to share, or <b>Join</b> with a friend\'s code — then everyone spins together.' },
+  { target: 'btn-progress', title: 'Track your progress',        body: 'See your total reps, workouts, streaks and unlocked achievements.' },
+  { target: 'btn-help',     title: 'That\'s it!',                body: 'Reopen this tour anytime from the <b>❓</b> button. Now go spin! 💪' }
 ];
 let tutorialStep = 0;
+let _coachResizeBound = false;
 
 function renderTutorialStep() {
-  const s = TUTORIAL_STEPS[tutorialStep];
-  $('tutorial-icon').textContent = s.icon;
-  $('tutorial-title').textContent = s.title;
-  $('tutorial-body').innerHTML = s.body; // static, trusted copy
+  const step = TUTORIAL_STEPS[tutorialStep];
+  const target = $(step.target);
+  if (!target) { closeTutorial(); return; }
+
+  $('tutorial-overlay').classList.remove('hidden');
+  $('tutorial-title').textContent = step.title;
+  $('tutorial-body').innerHTML = step.body; // static, trusted copy
+
   const dots = $('tutorial-dots');
   dots.innerHTML = '';
   TUTORIAL_STEPS.forEach((_, i) => {
@@ -239,12 +243,56 @@ function renderTutorialStep() {
   $('btn-tutorial-back').style.visibility = tutorialStep === 0 ? 'hidden' : 'visible';
   $('btn-tutorial-next').textContent =
     tutorialStep === TUTORIAL_STEPS.length - 1 ? 'Got it! 💪' : 'Next →';
+
+  positionTutorial(target);
+}
+
+// Move the spotlight over the target button and point the tooltip at it.
+function positionTutorial(target) {
+  const r = target.getBoundingClientRect();
+  const pad = 8;
+  const spot = $('tutorial-spotlight');
+  spot.style.left = (r.left - pad) + 'px';
+  spot.style.top = (r.top - pad) + 'px';
+  spot.style.width = (r.width + pad * 2) + 'px';
+  spot.style.height = (r.height + pad * 2) + 'px';
+
+  const tip = $('tutorial-card');
+  const arrow = $('tutorial-arrow');
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const margin = 12, gap = 16;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  const targetCenterX = r.left + r.width / 2;
+  const placeBelow = r.top < vh * 0.45; // target near the top → tooltip below it
+
+  let top = placeBelow ? (r.bottom + gap) : (r.top - gap - th);
+  top = Math.max(margin, Math.min(top, vh - margin - th));
+  let left = targetCenterX - tw / 2;
+  left = Math.max(margin, Math.min(left, vw - margin - tw));
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+
+  arrow.className = 'tutorial-arrow ' + (placeBelow ? 'up' : 'down');
+  let arrowLeft = targetCenterX - left - 7;
+  arrowLeft = Math.max(16, Math.min(arrowLeft, tw - 30));
+  arrow.style.left = arrowLeft + 'px';
 }
 
 function openTutorial() {
   tutorialStep = 0;
+  if (!_coachResizeBound) {
+    _coachResizeBound = true;
+    window.addEventListener('resize', () => {
+      if (!$('tutorial-overlay').classList.contains('hidden')) renderTutorialStep();
+    });
+  }
   renderTutorialStep();
-  $('tutorial-overlay').classList.remove('hidden');
+  // Reposition once web fonts finish loading (button sizes can shift).
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      if (!$('tutorial-overlay').classList.contains('hidden')) renderTutorialStep();
+    });
+  }
 }
 
 function closeTutorial() {

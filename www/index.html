@@ -427,15 +427,14 @@
     </div>
   </div>
 
-  <!-- Tutorial / How it works -->
+  <!-- Tutorial coach-marks (highlights & points at each button) -->
   <div id="tutorial-overlay" class="tutorial-overlay hidden">
-    <div class="tutorial-card">
+    <div id="tutorial-spotlight" class="tutorial-spotlight"></div>
+    <div id="tutorial-card" class="tutorial-card">
+      <div id="tutorial-arrow" class="tutorial-arrow"></div>
       <button id="btn-tutorial-skip" class="tutorial-skip" aria-label="Skip tutorial">Skip</button>
-      <div class="tutorial-step">
-        <div id="tutorial-icon" class="tutorial-icon">👋</div>
-        <h2 id="tutorial-title" class="tutorial-title"></h2>
-        <p id="tutorial-body" class="tutorial-body"></p>
-      </div>
+      <h3 id="tutorial-title" class="tutorial-title"></h3>
+      <p id="tutorial-body" class="tutorial-body"></p>
       <div id="tutorial-dots" class="tutorial-dots"></div>
       <div class="tutorial-nav">
         <button id="btn-tutorial-back" class="btn btn-secondary tutorial-btn">Back</button>

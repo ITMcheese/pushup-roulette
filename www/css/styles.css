@@ -1633,77 +1633,92 @@ body {
 }
 
 /* ============================================
-   TUTORIAL — first-run tour + reopenable from the ? button
+   TUTORIAL — coach-marks that highlight & point at each button
    ============================================ */
 .tutorial-overlay {
   position: fixed;
   inset: 0;
   z-index: 1200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 16px);
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  animation: fadeIn 0.25s ease;
 }
 .tutorial-overlay.hidden { display: none !important; }
-.tutorial-card {
-  position: relative;
-  width: 100%;
-  max-width: 380px;
-  background: var(--bg-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-xl);
-  padding: 30px 24px 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), var(--shadow-glow);
-  text-align: center;
-  animation: bounceIn 0.4s ease;
+
+/* Spotlight: a transparent "hole" over the target button whose huge
+   box-shadow dims the rest of the screen, plus a glowing accent ring. */
+.tutorial-spotlight {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-radius: 14px;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.80), 0 0 16px var(--accent-glow);
+  pointer-events: none;
+  transition: left 0.3s ease, top 0.3s ease, width 0.3s ease, height 0.3s ease;
+  z-index: 1210;
 }
+
+/* Tooltip card, positioned next to the highlighted button */
+.tutorial-card {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: min(300px, calc(100vw - 28px));
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px 14px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55);
+  z-index: 1220;
+  transition: left 0.25s ease, top 0.25s ease;
+  animation: fadeIn 0.2s ease;
+}
+.tutorial-arrow {
+  position: absolute;
+  left: 20px;
+  width: 14px;
+  height: 14px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: rotate(45deg);
+}
+.tutorial-arrow.up { top: -8px; border-right: none; border-bottom: none; }
+.tutorial-arrow.down { bottom: -8px; border-left: none; border-top: none; }
 .tutorial-skip {
   position: absolute;
-  top: 12px;
-  right: 16px;
+  top: 10px;
+  right: 12px;
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   padding: 4px 6px;
 }
 .tutorial-skip:hover { color: var(--text-primary); }
-.tutorial-step {
-  min-height: 210px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.tutorial-icon { font-size: 3.2rem; margin-bottom: 12px; line-height: 1; }
 .tutorial-title {
   font-family: var(--font-display);
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
+  padding-right: 38px;
 }
 .tutorial-body {
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: 0.92rem;
+  line-height: 1.45;
   color: var(--text-secondary);
 }
 .tutorial-body b { color: var(--text-primary); font-weight: 600; }
 .tutorial-dots {
   display: flex;
-  justify-content: center;
-  gap: 7px;
-  margin: 18px 0 16px;
+  gap: 6px;
+  margin: 14px 0 12px;
 }
 .tutorial-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--bg-card);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -1714,5 +1729,5 @@ body {
   border-color: var(--accent);
   transform: scale(1.25);
 }
-.tutorial-nav { display: flex; gap: 12px; }
-.tutorial-nav .tutorial-btn { flex: 1; padding: 12px; }
+.tutorial-nav { display: flex; gap: 10px; }
+.tutorial-nav .tutorial-btn { flex: 1; padding: 10px; font-size: 0.95rem; }
