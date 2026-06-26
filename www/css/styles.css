@@ -1731,3 +1731,23 @@ body {
 }
 .tutorial-nav { display: flex; gap: 10px; }
 .tutorial-nav .tutorial-btn { flex: 1; padding: 10px; font-size: 0.95rem; }
+
+/* ============================================
+   GROUP ROLES — leave button + member restrictions
+   ============================================ */
+/* The Leave button only appears while in a group; the Join/Create
+   button hides so the two never show at once. */
+#btn-leave-group { width: 100%; margin-top: 10px; display: none; }
+#btn-leave-group:hover { border-color: var(--danger); color: var(--danger); }
+body.group-connected #btn-leave-group { display: block; }
+body.group-connected #btn-group { display: none !important; }
+
+/* A group MEMBER follows the host: no spinning, starting, skipping,
+   cancelling or advancing. They just watch, can view/expand the GIF
+   (the 📖 button during the workout), and get the workout saved + an
+   achievement when the timed workout finishes on its own. */
+body.group-member #btn-spin,
+body.group-member .action-row,
+body.group-member #btn-quit-workout,
+body.group-member #btn-set-complete,
+body.group-member #btn-complete-spin { display: none !important; }

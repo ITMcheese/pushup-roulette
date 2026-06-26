@@ -364,6 +364,14 @@ function resetGroupUI() {
   $('roulette-window').classList.remove('locked');
 }
 
+// Toggle role-based control visibility. Members follow the host: they
+// can't spin, start, skip, cancel, advance, or scroll the reel.
+function updateGroupControls() {
+  document.body.classList.toggle('group-connected', groupConnected);
+  document.body.classList.toggle('group-member', groupConnected && !isGroupHost);
+  $('roulette-window').classList.toggle('locked', groupConnected && !isGroupHost);
+}
+
 // ── Settings persistence ────────────────────────────────────
 function savePreferences() {
   Storage.savePreferences({
@@ -738,23 +746,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     hideGroupBadge();
     resetGroupUI();
+    updateGroupControls();
+    showView('view-main');
+  });
+
+  // ── Leave Group (button on the main screen) ─────────────
+  $('btn-leave-group').addEventListener('click', () => {
+    Audio.buttonPress();
+    Group.disconnect();
+    hideGroupBadge();
+    resetGroupUI();
+    updateGroupControls();
+    showToast('You left the group.');
     showView('view-main');
   });
 
   // ── Create Group ────────────────────────────────────────
   $('btn-create-group').addEventListener('click', async () => {
+    if (Group.isConnected()) Group.disconnect();   // start from a clean slate
     const name = $('group-name-input').value.trim() || 'Host';
-    const code = await Group.createSession(name);
-
-    $('group-host-section').classList.remove('hidden');
-    $('group-join-section').classList.add('hidden');
-    $('group-code').textContent = code;
-    isGroupHost = true;
-
-    showGroupBadge();
-
-    // Register member update callback
-    Group.onMemberUpdate((members) => updateGroupMemberList(members));
+    try {
+      const code = await Group.createSession(name);
+      $('group-host-section').classList.remove('hidden');
+      $('group-join-section').classList.add('hidden');
+      $('group-code').textContent = code;
+      isGroupHost = true;
+      showGroupBadge();
+      updateGroupControls();
+      Group.onMemberUpdate((members) => updateGroupMemberList(members));
+    } catch (err) {
+      showToast('Could not create the group. Please try again.');
+    }
   });
 
   // ── Join Group ──────────────────────────────────────────
@@ -762,12 +784,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = $('group-name-input').value.trim();
     const code = $('group-code-input').value.trim().toUpperCase();
 
-    if (!name || !code) return;
+    if (!name || !code) { showToast('Enter your name and a group code.'); return; }
 
-    await Group.joinSession(code, name);
+    if (Group.isConnected()) Group.disconnect();   // leave any previous session first
+
+    const joinBtn = $('btn-join-group');
+    joinBtn.disabled = true;
+    try {
+      await Group.joinSession(code, name);
+    } catch (err) {
+      joinBtn.disabled = false;
+      showToast('Could not join — check the code and try again.');
+      return;
+    }
+    joinBtn.disabled = false;
+
+    isGroupHost = false;
     showGroupBadge();
+    updateGroupControls();
     showView('view-main');
-    $('roulette-window').classList.add('locked');
 
     // Register group callbacks for non-host
     Group.onSpinReceived(async (data) => {

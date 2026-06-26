@@ -61,17 +61,28 @@ export const Group = {
     this.roomCode = roomCode.toUpperCase();
 
     return new Promise((resolve, reject) => {
+      const fail = (err) => {
+        clearTimeout(timer);
+        try { if (this.peer) this.peer.destroy(); } catch (e) { /* ignore */ }
+        this.peer = null;
+        this.hostConnection = null;
+        reject(err);
+      };
+      // Never hang forever if the code is wrong / the host is gone.
+      const timer = setTimeout(() => fail(new Error('Join timed out')), 12000);
+
       this.peer = new window.Peer();
       this.peer.on('open', () => {
         const conn = this.peer.connect(ROOM_PREFIX + this.roomCode, { metadata: { name: displayName } });
         conn.on('open', () => {
+          clearTimeout(timer);
           this.hostConnection = conn;
           this._setupMemberListeners(conn);
           resolve();
         });
-        conn.on('error', (err) => reject(err));
+        conn.on('error', (err) => fail(err));
       });
-      this.peer.on('error', (err) => reject(err));
+      this.peer.on('error', (err) => fail(err));
     });
   },
 
