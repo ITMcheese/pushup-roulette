@@ -74,9 +74,11 @@ workflows:
           # Reuses the same distribution cert across every build (needed for
           # external TestFlight). --create only creates a new cert if none
           # exists yet for this account/bundle; once one exists it's reused.
+          # The @env: syntax tells codemagic-cli-tools to read the multiline
+          # PEM straight from the env var (more robust than shell expansion).
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --certificate-key="$CERTIFICATE_PRIVATE_KEY" \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
             --create
       - name: Set up keychain
         script: |
