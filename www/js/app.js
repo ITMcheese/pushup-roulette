@@ -789,15 +789,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Group.isConnected()) Group.disconnect();   // leave any previous session first
 
     const joinBtn = $('btn-join-group');
+    const joinLabel = joinBtn.textContent;
     joinBtn.disabled = true;
+    joinBtn.textContent = 'Joining…';
     try {
       await Group.joinSession(code, name);
     } catch (err) {
       joinBtn.disabled = false;
+      joinBtn.textContent = joinLabel;
       showToast('Could not join — check the code and try again.');
       return;
     }
     joinBtn.disabled = false;
+    joinBtn.textContent = joinLabel;
 
     isGroupHost = false;
     showGroupBadge();

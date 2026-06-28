@@ -11,6 +11,19 @@ const MAX_NAME_LENGTH = 30;
 const ROOM_CODE_LENGTH = 6;
 const ROOM_PREFIX = 'bwroulette-';
 
+// WebRTC ICE servers. STUN finds each peer's public address; TURN relays
+// the connection when a direct peer-to-peer link can't be opened (common
+// when the two devices are on different networks, e.g. Wi-Fi + cellular).
+const ICE_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ]
+};
+
 const MSG_TYPES = {
   SPIN_RESULT: 'spin_result',
   SET_COMPLETE: 'set_complete',
@@ -43,7 +56,7 @@ export const Group = {
     this.members = [{ id: 'host', name: displayName, isHost: true, setsCompleted: 0, isFinished: false }];
 
     return new Promise((resolve, reject) => {
-      this.peer = new window.Peer(ROOM_PREFIX + this.roomCode);
+      this.peer = new window.Peer(ROOM_PREFIX + this.roomCode, { config: ICE_CONFIG });
       this.peer.on('open', () => {
         this.peer.on('connection', (conn) => this._handleIncomingConnection(conn));
         resolve(this.roomCode);
@@ -69,9 +82,9 @@ export const Group = {
         reject(err);
       };
       // Never hang forever if the code is wrong / the host is gone.
-      const timer = setTimeout(() => fail(new Error('Join timed out')), 12000);
+      const timer = setTimeout(() => fail(new Error('Join timed out')), 15000);
 
-      this.peer = new window.Peer();
+      this.peer = new window.Peer(undefined, { config: ICE_CONFIG });
       this.peer.on('open', () => {
         const conn = this.peer.connect(ROOM_PREFIX + this.roomCode, { metadata: { name: displayName } });
         conn.on('open', () => {
