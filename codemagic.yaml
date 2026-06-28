@@ -62,13 +62,43 @@ workflows:
           cd ios/App && pod install
       - name: Verify stable distribution key is configured
         script: |
-          if [ -z "$CERTIFICATE_PRIVATE_KEY" ]; then
-            echo "❌ CERTIFICATE_PRIVATE_KEY is not set."
-            echo "   External TestFlight needs a stable signing cert."
-            echo "   See the comment at the top of codemagic.yaml for setup."
+          # Print everything Claude needs to diagnose the env-var scope without
+          # ever echoing the secret value itself.
+          echo "──────── ENV DIAGNOSTICS ────────"
+          echo "Total env vars: $(env | wc -l)"
+          echo ""
+          echo "Env var NAMES (sorted, values omitted):"
+          env | cut -d= -f1 | sort
+          echo ""
+          echo "Looking for any var that might be a misnamed cert key:"
+          env | cut -d= -f1 | grep -i -E '(cert|key|private|signing|distrib)' || echo "  (no matches)"
+          echo ""
+          echo "── target var status ──"
+          if [ -n "$CERTIFICATE_PRIVATE_KEY" ]; then
+            echo "✅ CERTIFICATE_PRIVATE_KEY is set."
+            echo "   Length: ${#CERTIFICATE_PRIVATE_KEY} chars"
+            echo "   First 30 chars: ${CERTIFICATE_PRIVATE_KEY:0:30}"
+            echo "   Last 30 chars: ${CERTIFICATE_PRIVATE_KEY: -30}"
+            # Sanity: does it look like a PEM?
+            if echo "$CERTIFICATE_PRIVATE_KEY" | grep -q "BEGIN.*PRIVATE KEY"; then
+              echo "   ✅ Looks like a PEM private key."
+            else
+              echo "   ⚠️ Does not contain 'BEGIN ... PRIVATE KEY' — value may be malformed."
+            fi
+            echo "─────────────────────────────────"
+          else
+            echo "❌ CERTIFICATE_PRIVATE_KEY is NOT visible to this workflow."
+            echo ""
+            echo "If you see a similarly-named var in the list above, the name doesn't match."
+            echo "If you see NO cert-related vars, the variable is saved in a scope this"
+            echo "workflow can't see (most commonly: an environment group not referenced"
+            echo "by 'environment.groups:' in this YAML, or saved at the team-personal"
+            echo "level instead of the app level)."
+            echo ""
+            echo "Paste the full log above to Claude and a one-line fix will follow."
+            echo "─────────────────────────────────"
             exit 1
           fi
-          echo "✅ Stable distribution key found."
       - name: Fetch signing files
         script: |
           # Reuses the same distribution cert across every build (needed for
