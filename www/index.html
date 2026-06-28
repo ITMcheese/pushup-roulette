@@ -215,6 +215,21 @@
         <button id="btn-complete-spin" class="btn btn-primary">🎰 Spin Again</button>
         <button id="btn-save-workout" class="btn btn-secondary">💾 Save &amp; Close</button>
       </div>
+      <button id="btn-share-workout" class="btn btn-secondary btn-share-workout">📤 Share Workout</button>
+    </div>
+
+    <!-- Share Card Preview Overlay -->
+    <div id="share-overlay" class="share-overlay hidden">
+      <div class="share-overlay-backdrop"></div>
+      <div class="share-overlay-content">
+        <h3 class="share-overlay-title">Share your workout</h3>
+        <canvas id="share-canvas" class="share-canvas" width="900" height="1600"></canvas>
+        <div class="share-overlay-actions">
+          <button id="btn-share-send" class="btn btn-primary">📤 Share</button>
+          <button id="btn-share-download" class="btn btn-secondary">⬇ Save Image</button>
+          <button id="btn-share-close" class="btn btn-secondary">← Back</button>
+        </div>
+      </div>
     </div>
 
     <!-- ================================================
@@ -258,6 +273,26 @@
       <!-- Weekly Chart -->
       <div class="chart-container">
         <canvas id="stats-chart" width="300" height="200"></canvas>
+      </div>
+
+      <!-- Workout Calendar -->
+      <div class="calendar-section">
+        <div class="calendar-header">
+          <button id="btn-cal-prev" class="icon-btn" aria-label="Previous month">‹</button>
+          <h3 id="calendar-title" class="calendar-title">—</h3>
+          <button id="btn-cal-next" class="icon-btn" aria-label="Next month">›</button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+        <p id="calendar-detail" class="calendar-detail">Tap a day to see what you trained.</p>
+      </div>
+
+      <!-- Personal Records -->
+      <h3 class="section-heading">Personal Records</h3>
+      <div id="pr-list" class="pr-list">
+        <!-- Populated by JS; empty state inserted if no PRs yet -->
       </div>
 
       <!-- Achievements -->
@@ -331,6 +366,18 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+
+        <!-- Daily Reminder -->
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <span class="setting-label">Daily Reminder</span>
+            <span class="setting-sublabel">Ping me at 7pm if I haven't trained yet</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setting-reminder" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
 
       <!-- Feedback Section -->
@@ -394,6 +441,23 @@
 
         <button id="btn-create-group" class="btn btn-secondary" style="width:100%;">Create Group</button>
       </div>
+
+      <!-- Connection status banner (shown during join/connection) -->
+      <div id="group-connection-status" class="connection-status hidden">
+        <span id="connection-status-dot" class="connection-dot"></span>
+        <span id="connection-status-text">Idle</span>
+      </div>
+
+      <!-- Diagnostic / Test Connection -->
+      <details class="group-diagnostic">
+        <summary>Trouble connecting? Test your network</summary>
+        <p class="diagnostic-help">
+          Both phones on the <b>same Wi-Fi</b> work best. Cellular connections need a TURN relay
+          and may be unreliable on free servers.
+        </p>
+        <button id="btn-test-connection" class="btn btn-secondary" style="width: 100%;">🩺 Test Connection</button>
+        <div id="connection-test-results" class="connection-test-results"></div>
+      </details>
     </div>
 
   </div><!-- /.app-container -->

@@ -9,7 +9,8 @@ const KEYS = {
   STREAK: 'pr_streak',
   PREFERENCES: 'pr_preferences',
   ACHIEVEMENTS: 'pr_achievements',
-  FEEDBACK: 'pr_feedback'
+  FEEDBACK: 'pr_feedback',
+  PERSONAL_RECORDS: 'pr_records'
 };
 
 const DEFAULT_PREFERENCES = {
@@ -17,7 +18,10 @@ const DEFAULT_PREFERENCES = {
   mode: 'standard',
   soundEnabled: true,
   vibrationEnabled: true,
-  theme: 'dark'
+  theme: 'dark',
+  reminderEnabled: false,
+  reminderHour: 19,
+  reminderMinute: 0
 };
 
 /**
@@ -235,6 +239,116 @@ export const Storage = {
       }
     }
     return maxName;
+  },
+
+  // ── Personal Records ──────────────────────────────────────────
+
+  /**
+   * Get the full personal-records map.
+   * Shape: { [exerciseId]: { exerciseName, icon, unit,
+   *                          bestPerSet, totalReps, totalSets,
+   *                          longestDuration, lastAchievedAt } }
+   * @returns {Object}
+   */
+  getPersonalRecords() {
+    return load(KEYS.PERSONAL_RECORDS, {});
+  },
+
+  /**
+   * Update PRs after a completed workout.
+   * Returns an array of newly-broken records (for toast notifications):
+   *   [{ exerciseId, exerciseName, kind: 'bestPerSet'|'totalReps'|'totalSets'|'longestDuration',
+   *      previous, current, unit }]
+   * @param {{ exerciseId: string, exerciseName: string, icon?: string, unit?: string,
+   *           reps: number, sets: number, duration: number, totalPushups: number }} workout
+   * @returns {Array}
+   */
+  updatePersonalRecords(workout) {
+    if (!workout || !workout.exerciseId) return [];
+
+    const records = this.getPersonalRecords();
+    const id = workout.exerciseId;
+    const unit = workout.unit || 'reps';
+    const broken = [];
+
+    const existing = records[id] || {
+      exerciseName: workout.exerciseName,
+      icon: workout.icon || '💪',
+      unit,
+      bestPerSet: 0,
+      totalReps: 0,
+      totalSets: 0,
+      longestDuration: 0,
+      lastAchievedAt: null
+    };
+
+    // Always refresh the display fields in case the catalog changed.
+    existing.exerciseName = workout.exerciseName || existing.exerciseName;
+    if (workout.icon) existing.icon = workout.icon;
+    existing.unit = unit;
+
+    const repsPerSet = Number(workout.reps) || 0;
+    const totalSets  = Number(workout.sets) || 0;
+    const totalReps  = Number(workout.totalPushups) || repsPerSet * totalSets;
+    const duration   = Number(workout.duration) || 0;
+
+    if (repsPerSet > (existing.bestPerSet || 0)) {
+      broken.push({ exerciseId: id, exerciseName: existing.exerciseName,
+                    kind: 'bestPerSet', previous: existing.bestPerSet,
+                    current: repsPerSet, unit });
+      existing.bestPerSet = repsPerSet;
+    }
+    if (totalReps > (existing.totalReps || 0)) {
+      broken.push({ exerciseId: id, exerciseName: existing.exerciseName,
+                    kind: 'totalReps', previous: existing.totalReps,
+                    current: totalReps, unit });
+      existing.totalReps = totalReps;
+    }
+    if (totalSets > (existing.totalSets || 0)) {
+      broken.push({ exerciseId: id, exerciseName: existing.exerciseName,
+                    kind: 'totalSets', previous: existing.totalSets,
+                    current: totalSets, unit: 'sets' });
+      existing.totalSets = totalSets;
+    }
+    if (duration > (existing.longestDuration || 0)) {
+      // Don't fire a toast for duration alone — it's an implicit consequence
+      // of more sets/reps. Just track it silently for the PR card.
+      existing.longestDuration = duration;
+    }
+
+    if (broken.length > 0) {
+      existing.lastAchievedAt = new Date().toISOString();
+    }
+
+    records[id] = existing;
+    save(KEYS.PERSONAL_RECORDS, records);
+    return broken;
+  },
+
+  // ── Calendar / Date Queries ──────────────────────────────────
+
+  /**
+   * Group workouts by ISO date (YYYY-MM-DD) for calendar rendering.
+   * Returns { 'YYYY-MM-DD': [workout, ...] }
+   * Only includes dates with at least one workout.
+   * @param {number} [year] - 4-digit year to limit to (optional)
+   * @param {number} [month] - 0-indexed month to limit to (optional, requires year)
+   */
+  getWorkoutsByDate(year, month) {
+    const grouped = {};
+    for (const w of this.getWorkouts()) {
+      if (!w.date) continue;
+      const d = new Date(w.date);
+      if (year != null && d.getFullYear() !== year) continue;
+      if (month != null && d.getMonth() !== month) continue;
+      // Use LOCAL date so calendar cells match what the user did "today".
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const key = `${yyyy}-${mm}-${dd}`;
+      (grouped[key] = grouped[key] || []).push(w);
+    }
+    return grouped;
   },
 
   // ── Feedback ──────────────────────────────────────────────────

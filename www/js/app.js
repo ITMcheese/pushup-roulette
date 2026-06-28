@@ -12,6 +12,9 @@ import { Audio } from './audio.js';
 import { Stats } from './stats.js';
 import { Theme } from './theme.js';
 import { Group } from './group.js';
+import { Progress } from './progress.js';
+import { ShareCard } from './shareCard.js';
+import { Notifications } from './notifications.js';
 
 // ── Mode mapping (HTML kebab-case → MODES UPPER_SNAKE) ──────
 const MODE_MAP = {
@@ -132,6 +135,9 @@ function renderProgressView() {
 
   // Render chart via Stats module
   Stats.renderChart();
+
+  // Calendar + personal records
+  Progress.render();
 
   // Badges
   renderBadges();
@@ -300,6 +306,39 @@ function closeTutorial() {
   try { localStorage.setItem('cr_tutorial_seen', '1'); } catch (e) { /* ignore */ }
 }
 
+// ── Connection-status banner (shown in the group lobby) ────
+const CONN_STATE_COPY = {
+  idle:       { label: 'Idle',                              cls: 'conn-idle' },
+  signaling:  { label: 'Reaching signaling server…',         cls: 'conn-pending' },
+  connecting: { label: 'Negotiating peer-to-peer link…',     cls: 'conn-pending' },
+  checking:   { label: 'Negotiating peer-to-peer link…',     cls: 'conn-pending' },
+  connected:  { label: 'Connected!',                         cls: 'conn-ok' },
+  completed:  { label: 'Connected!',                         cls: 'conn-ok' },
+  disconnected:{label: 'Link dropped — trying to recover…', cls: 'conn-warn' },
+  failed:     { label: 'Couldn\'t connect. Try same WiFi.', cls: 'conn-err' },
+  closed:     { label: 'Disconnected.',                      cls: 'conn-idle' },
+};
+
+function showConnectionStatus(info) {
+  const banner = $('group-connection-status');
+  const text   = $('connection-status-text');
+  const dot    = $('connection-status-dot');
+  if (!banner || !text || !dot) return;
+
+  const meta = CONN_STATE_COPY[info.state] || { label: info.state, cls: 'conn-idle' };
+  banner.classList.remove('hidden', 'conn-idle', 'conn-pending', 'conn-ok', 'conn-warn', 'conn-err');
+  banner.classList.add(meta.cls);
+  if (info.state === 'connected' || info.state === 'completed') {
+    const pathLabel = info.path === 'relay' ? ' (via relay)'
+                    : info.path === 'direct' ? ' (direct)'
+                    : '';
+    text.textContent = meta.label + pathLabel;
+  } else {
+    text.textContent = meta.label;
+  }
+  dot.className = 'connection-dot ' + meta.cls;
+}
+
 // ── Group UI helpers ────────────────────────────────────────
 function updateGroupMemberList(members) {
   // Lobby list
@@ -380,6 +419,7 @@ function savePreferences() {
     mode: $('setting-mode').value || 'standard',
     sound: $('setting-sound').checked,
     vibration: $('setting-vibration').checked,
+    reminderEnabled: $('setting-reminder').checked,
     theme: Theme.current ? Theme.current() : (document.documentElement.getAttribute('data-theme') || 'dark'),
   });
 }
@@ -411,14 +451,48 @@ function loadPreferences() {
     currentCategory = prefs.category;
     $('setting-category').value = prefs.category;
   }
+  if (prefs.reminderEnabled !== undefined) {
+    $('setting-reminder').checked = !!prefs.reminderEnabled;
+  }
+  // Hide the reminder row on platforms where notifications can't actually
+  // fire (i.e. the dev preview). Native iOS users still see + toggle it.
+  if (!Notifications.isAvailable()) {
+    const row = $('setting-reminder')?.closest('.setting-row');
+    if (row) row.classList.add('reminder-row-disabled');
+  }
 }
+
+// ── Last-workout cache (used by the share card) ─────────────
+let lastCompletedWorkout = null;
+let lastWorkoutBrokeRecord = false;
 
 // ── Workout completion handler ──────────────────────────────
 function handleWorkoutComplete(results) {
+  // Enrich the saved record with the exercise icon + unit so PRs and the
+  // share card can render without a roundtrip to the catalog.
+  const enriched = {
+    ...results,
+    isGroup: groupConnected,
+    icon: currentChallenge?.exercise?.icon,
+    unit: currentChallenge?.unit || results.unit || 'reps',
+    difficulty: currentChallenge?.exercise?.difficulty || 'intermediate'
+  };
+
   // Persist
-  Storage.saveWorkout({ ...results, isGroup: groupConnected });
+  Storage.saveWorkout(enriched);
   Storage.updateLifetimeStats(results.totalPushups, results.duration);
   Storage.updateStreak();
+
+  // Personal records — fire a toast for each broken record.
+  const brokenRecords = Storage.updatePersonalRecords(enriched);
+  brokenRecords.forEach((r) => {
+    const kindLabel = r.kind === 'bestPerSet' ? 'Best set'
+                    : r.kind === 'totalReps'  ? 'Most total reps'
+                    : r.kind === 'totalSets'  ? 'Most sets'
+                    : 'Personal record';
+    const unit = r.unit === 'seconds' ? 's' : '';
+    showToast(`🏆 ${kindLabel}: ${r.current}${unit} — ${r.exerciseName}`);
+  });
 
   // Check achievements
   const stats  = Storage.getLifetimeStats();
@@ -442,6 +516,16 @@ function handleWorkoutComplete(results) {
   $('complete-total-sets').textContent    = results.sets;
   $('complete-duration').textContent      = formatDuration(Math.round(results.duration));
   $('complete-calories').textContent      = Math.round(results.totalPushups * 0.36);
+
+  // Cache for the Share button.
+  lastCompletedWorkout = { ...enriched, streak: streak.current };
+  lastWorkoutBrokeRecord = brokenRecords.length > 0;
+
+  // Push today's reminder out to tomorrow so we don't ping for a kept streak.
+  const prefs = Storage.getPreferences();
+  if (prefs.reminderEnabled && Notifications.isAvailable()) {
+    Notifications.onWorkoutLogged(prefs.reminderHour, prefs.reminderMinute);
+  }
 
   showView('view-complete');
 }
@@ -490,6 +574,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Stats ───────────────────────────────────────────────
   Stats.init($('stats-chart'));
 
+  // ── Progress (calendar + personal records) ──────────────
+  Progress.init({
+    gridEl:   $('calendar-grid'),
+    titleEl:  $('calendar-title'),
+    detailEl: $('calendar-detail'),
+    prevBtn:  $('btn-cal-prev'),
+    nextBtn:  $('btn-cal-next'),
+    prListEl: $('pr-list')
+  });
+
   // ── Achievements toast ──────────────────────────────────
   Achievements.onUnlock((achievement) => {
     showToast(`${achievement.icon} ${achievement.name} unlocked!`);
@@ -504,6 +598,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
+
+  // ── Daily reminder bootstrap ────────────────────────────
+  // If the user has reminders on, make sure the schedule is alive (e.g.
+  // after a reboot or app reinstall). Fire-and-forget — no UI impact.
+  (async () => {
+    const prefs = Storage.getPreferences();
+    if (!prefs.reminderEnabled || !Notifications.isAvailable()) return;
+    const status = await Notifications.getPermissionStatus();
+    if (status === 'granted') {
+      Notifications.scheduleDaily(prefs.reminderHour, prefs.reminderMinute);
+    }
+  })();
 
   // ── Unlock audio on the first user interaction (iOS WKWebView) ──
   let _audioUnlocked = false;
@@ -765,8 +871,11 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-create-group').addEventListener('click', async () => {
     if (Group.isConnected()) Group.disconnect();   // start from a clean slate
     const name = $('group-name-input').value.trim() || 'Host';
+    Group.onConnectionState(showConnectionStatus);
+    showConnectionStatus({ state: 'signaling' });
     try {
       const code = await Group.createSession(name);
+      showConnectionStatus({ state: 'connected', path: 'direct' });
       $('group-host-section').classList.remove('hidden');
       $('group-join-section').classList.add('hidden');
       $('group-code').textContent = code;
@@ -775,6 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateGroupControls();
       Group.onMemberUpdate((members) => updateGroupMemberList(members));
     } catch (err) {
+      showConnectionStatus({ state: 'failed' });
       showToast('Could not create the group. Please try again.');
     }
   });
@@ -788,6 +898,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (Group.isConnected()) Group.disconnect();   // leave any previous session first
 
+    Group.onConnectionState(showConnectionStatus);
+
     const joinBtn = $('btn-join-group');
     const joinLabel = joinBtn.textContent;
     joinBtn.disabled = true;
@@ -797,7 +909,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       joinBtn.disabled = false;
       joinBtn.textContent = joinLabel;
-      showToast('Could not join — check the code and try again.');
+      const msg = String(err?.message || '').toLowerCase().includes('timed out')
+        ? 'Took too long. Try the same WiFi, or run the Test Connection check.'
+        : 'Could not join — check the code and try again.';
+      showToast(msg);
       return;
     }
     joinBtn.disabled = false;
@@ -855,6 +970,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ── Test Connection (diagnostic) ───────────────────────
+  $('btn-test-connection').addEventListener('click', async () => {
+    Audio.buttonPress();
+    const resultsEl = $('connection-test-results');
+    const btn = $('btn-test-connection');
+    btn.disabled = true;
+    btn.textContent = 'Testing…';
+    resultsEl.textContent = '';
+    try {
+      const r = await Group.testConnection();
+      const row = (icon, label, ok, hint) => {
+        const d = document.createElement('div');
+        d.className = 'conn-test-row ' + (ok ? 'conn-ok' : 'conn-warn');
+        d.textContent = `${icon} ${label}: ${ok ? 'OK' : (hint || 'unavailable')}`;
+        return d;
+      };
+      resultsEl.appendChild(row('🛰️', 'Signaling server', r.signaling,
+        'Cannot reach the matchmaker server. Check your internet.'));
+      resultsEl.appendChild(row('🌐', 'STUN (same-WiFi reach)', r.stun,
+        'STUN servers unreachable. Same-WiFi groups will still try.'));
+      resultsEl.appendChild(row('🔁', 'TURN (cellular fallback)', r.turn,
+        'Free TURN is unreachable. Cellular groups won\'t connect reliably.'));
+      if (r.error) {
+        const e = document.createElement('div');
+        e.className = 'conn-test-row conn-err';
+        e.textContent = '⚠️ ' + r.error;
+        resultsEl.appendChild(e);
+      }
+      const summary = document.createElement('p');
+      summary.className = 'conn-test-summary';
+      if (r.signaling && r.turn) {
+        summary.textContent = 'Looks good — group workouts should connect even on cellular.';
+      } else if (r.signaling && r.stun) {
+        summary.textContent = 'Same-WiFi groups should work. Cellular may fail — try the same WiFi.';
+      } else if (r.signaling) {
+        summary.textContent = 'Matchmaking works but neither STUN nor TURN reach you. Try a different network.';
+      } else {
+        summary.textContent = 'No connectivity to the matchmaker. Check Wi-Fi/cellular.';
+      }
+      resultsEl.appendChild(summary);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🩺 Test Connection';
+    }
+  });
+
   // ── Group Spin (host) ──────────────────────────────────
   $('btn-group-spin').addEventListener('click', async () => {
     Audio.init();
@@ -885,6 +1046,58 @@ document.addEventListener('DOMContentLoaded', () => {
     showView('view-main');
   });
 
+  // ── Share Workout Card ────────────────────────────────
+  const openShareCard = () => {
+    if (!lastCompletedWorkout) {
+      showToast('Finish a workout to share it.');
+      return;
+    }
+    Audio.buttonPress();
+    const canvas = $('share-canvas');
+    ShareCard.render(canvas, {
+      exerciseName:     lastCompletedWorkout.exerciseName,
+      exerciseIcon:     lastCompletedWorkout.icon || '💪',
+      sets:             lastCompletedWorkout.sets,
+      reps:             lastCompletedWorkout.reps,
+      unit:             lastCompletedWorkout.unit,
+      duration:         lastCompletedWorkout.duration,
+      totalPushups:     lastCompletedWorkout.totalPushups,
+      streak:           lastCompletedWorkout.streak,
+      difficulty:       lastCompletedWorkout.difficulty,
+      isPersonalRecord: lastWorkoutBrokeRecord
+    });
+    $('share-overlay').classList.remove('hidden');
+  };
+  const closeShareCard = () => $('share-overlay').classList.add('hidden');
+
+  $('btn-share-workout').addEventListener('click', openShareCard);
+  $('btn-share-close').addEventListener('click', closeShareCard);
+
+  $('btn-share-send').addEventListener('click', async () => {
+    Audio.buttonPress();
+    const canvas = $('share-canvas');
+    const sendBtn = $('btn-share-send');
+    const originalLabel = sendBtn.textContent;
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Preparing…';
+    try {
+      const shared = await ShareCard.share(canvas, lastCompletedWorkout || {});
+      if (!shared) showToast('Image saved — share it from your gallery.');
+    } catch (err) {
+      showToast('Could not share. Saving image instead.');
+      await ShareCard.download(canvas);
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = originalLabel;
+    }
+  });
+
+  $('btn-share-download').addEventListener('click', async () => {
+    Audio.buttonPress();
+    await ShareCard.download($('share-canvas'));
+    showToast('Image saved to your downloads.');
+  });
+
   // ── Settings change listeners ──────────────────────────
   $('setting-difficulty').addEventListener('change', (e) => {
     currentDifficulty = e.target.value;
@@ -903,6 +1116,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('setting-vibration').addEventListener('change', () => {
     savePreferences();
+  });
+
+  $('setting-reminder').addEventListener('change', async (e) => {
+    const wantOn = e.target.checked;
+    savePreferences();
+    if (!Notifications.isAvailable()) {
+      if (wantOn) showToast('Reminders need the installed app on your phone.');
+      return;
+    }
+    if (wantOn) {
+      const status = await Notifications.requestPermission();
+      if (status !== 'granted') {
+        e.target.checked = false;
+        savePreferences();
+        showToast('Enable notifications in iOS Settings to get reminders.');
+        return;
+      }
+      const prefs = Storage.getPreferences();
+      const ok = await Notifications.scheduleDaily(prefs.reminderHour, prefs.reminderMinute);
+      showToast(ok ? 'Daily reminder set for 7pm. 🔔' : 'Could not schedule reminder.');
+    } else {
+      await Notifications.cancel();
+      showToast('Daily reminder off.');
+    }
   });
 
   $('setting-category').addEventListener('change', (e) => {

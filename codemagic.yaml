@@ -1,3 +1,33 @@
+# ──────────────────────────────────────────────────────────────────────────
+# ONE-TIME SETUP for external TestFlight to work (founder action required)
+# ──────────────────────────────────────────────────────────────────────────
+# This pipeline reuses a STABLE distribution certificate across every build.
+# Previously the YAML generated a new RSA key + revoked the old cert on every
+# build (a hack to dodge Apple's 3-cert limit), which made every build sign
+# with a different key. Apple's beta-review process rejects that with
+# ITMS-90035 Invalid Signature, blocking external TestFlight.
+#
+# For the new flow to work, the founder must set ONE secure env var in
+# Codemagic's UI (this only needs to be done once):
+#
+#   1. Codemagic UI → Apps → Calisthenics Roulette → Environment variables
+#   2. Add variable:
+#        Name:   CERTIFICATE_PRIVATE_KEY
+#        Value:  the contents of a 2048-bit RSA private key in PEM format
+#                (start with -----BEGIN RSA PRIVATE KEY-----)
+#        Group:  default
+#        Secure: ON  (so it persists encrypted and never logs)
+#   3. Generate the key locally with:
+#        openssl genrsa 2048 > my-distribution-key.pem
+#      Paste the entire file contents (including BEGIN/END lines).
+#
+# After that's set, every push to main reuses the same cert. If Apple already
+# has an active distribution cert tied to a DIFFERENT key, revoke it ONCE in
+# App Store Connect (Certificates, IDs & Profiles), then trigger a build —
+# fetch-signing-files --create will create a fresh cert against the stable
+# key and use it forever after.
+# ──────────────────────────────────────────────────────────────────────────
+
 workflows:
   ios-capacitor-workflow:
     name: Calisthenics Roulette iOS Build
@@ -30,73 +60,23 @@ workflows:
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App && pod install
-      - name: Set up certificate private key
+      - name: Verify stable distribution key is configured
         script: |
-          openssl genrsa 2048 2>/dev/null | tee /tmp/cert_key.pem
-          echo "CERTIFICATE_PRIVATE_KEY<<DELIMITER" >> $CM_ENV
-          cat /tmp/cert_key.pem >> $CM_ENV
-          echo "DELIMITER" >> $CM_ENV
-      - name: Revoke old distribution certificates
-        script: |
-          python3 << 'PYEOF'
-          import os, sys, json, urllib.request, ssl, time, jwt
-
-          key_id = os.environ.get('APP_STORE_CONNECT_KEY_IDENTIFIER', '')
-          issuer_id = os.environ.get('APP_STORE_CONNECT_ISSUER_ID', '')
-          raw_key = os.environ.get('APP_STORE_CONNECT_PRIVATE_KEY', '')
-
-          if not all([key_id, issuer_id, raw_key]):
-              print("Missing credentials, skipping")
-              sys.exit(0)
-
-          # The env var is @file:<path>, not the key itself
-          if raw_key.startswith('@file:'):
-              key_path = raw_key[6:]
-              print(f"Reading key from: {key_path}")
-              with open(key_path, 'r') as f:
-                  private_key = f.read()
-          else:
-              private_key = raw_key
-
-          print(f"Key loaded: {len(private_key)} bytes, {len(private_key.splitlines())} lines")
-
-          token = jwt.encode(
-              {'iss': issuer_id, 'iat': int(time.time()),
-               'exp': int(time.time()) + 1200, 'aud': 'appstoreconnect-v1'},
-              private_key, algorithm='ES256', headers={'kid': key_id})
-          print("JWT generated successfully")
-
-          headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-          ctx = ssl.create_default_context()
-
-          for cert_type in ['DISTRIBUTION', 'IOS_DISTRIBUTION']:
-              url = f'https://api.appstoreconnect.apple.com/v1/certificates?filter[certificateType]={cert_type}'
-              req = urllib.request.Request(url, headers=headers)
-              try:
-                  resp = urllib.request.urlopen(req, context=ctx)
-                  data = json.loads(resp.read())
-              except Exception as e:
-                  print(f"Error listing {cert_type}: {e}")
-                  continue
-              certs = data.get('data', [])
-              print(f"Found {len(certs)} {cert_type} certificate(s)")
-              for cert in certs:
-                  cert_id = cert['id']
-                  print(f"Revoking {cert_id}...")
-                  del_req = urllib.request.Request(
-                      f'https://api.appstoreconnect.apple.com/v1/certificates/{cert_id}',
-                      method='DELETE', headers=headers)
-                  try:
-                      urllib.request.urlopen(del_req, context=ctx)
-                      print(f"  Revoked")
-                  except Exception as e:
-                      print(f"  Error: {e}")
-          print("Certificate cleanup complete")
-          PYEOF
+          if [ -z "$CERTIFICATE_PRIVATE_KEY" ]; then
+            echo "❌ CERTIFICATE_PRIVATE_KEY is not set."
+            echo "   External TestFlight needs a stable signing cert."
+            echo "   See the comment at the top of codemagic.yaml for setup."
+            exit 1
+          fi
+          echo "✅ Stable distribution key found."
       - name: Fetch signing files
         script: |
+          # Reuses the same distribution cert across every build (needed for
+          # external TestFlight). --create only creates a new cert if none
+          # exists yet for this account/bundle; once one exists it's reused.
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key="$CERTIFICATE_PRIVATE_KEY" \
             --create
       - name: Set up keychain
         script: |
@@ -130,4 +110,4 @@ workflows:
         auth: integration
         submit_to_testflight: true
         beta_groups:
-          - External Testers
+          - External Roulette Testers

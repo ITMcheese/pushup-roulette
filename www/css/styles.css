@@ -793,6 +793,25 @@ body {
   font-weight: 500;
 }
 
+.setting-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  padding-right: 12px;
+}
+
+.setting-sublabel {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.reminder-row-disabled .toggle-switch {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 /* Toggle Switch (iOS-style) */
 .toggle-switch {
   position: relative;
@@ -1751,3 +1770,445 @@ body.group-member .action-row,
 body.group-member #btn-quit-workout,
 body.group-member #btn-set-complete,
 body.group-member #btn-complete-spin { display: none !important; }
+
+/* ============================================
+   CALENDAR — workout-history month view
+   ============================================ */
+.calendar-section {
+  margin: 24px 0 8px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.calendar-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+  flex: 1;
+  text-align: center;
+}
+
+.calendar-header .icon-btn {
+  width: 36px;
+  height: 36px;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.cal-cell.cal-blank {
+  cursor: default;
+  pointer-events: none;
+}
+
+.cal-num {
+  display: block;
+}
+
+.cal-dot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent-glow);
+}
+
+.cal-cell.cal-active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.cal-cell.cal-tier-1 { background: rgba(0, 255, 136, 0.10); }
+.cal-cell.cal-tier-2 { background: rgba(0, 255, 136, 0.22); }
+.cal-cell.cal-tier-3 { background: rgba(0, 255, 136, 0.42); color: #0a0a0f; }
+.cal-cell.cal-tier-3 .cal-dot { background: #0a0a0f; box-shadow: none; }
+
+.cal-cell.cal-today {
+  border-color: var(--accent);
+}
+
+.cal-cell.cal-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.cal-cell:not(.cal-blank):hover {
+  background: rgba(0, 255, 136, 0.15);
+}
+
+.calendar-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  min-height: 32px;
+}
+
+.cal-detail-date {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.cal-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+  font-size: 0.85rem;
+}
+
+.cal-detail-row:last-child { border-bottom: none; }
+
+.cal-detail-name {
+  color: var(--text-primary);
+  font-weight: 500;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.cal-detail-stats {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cal-detail-more {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* ============================================
+   PERSONAL RECORDS — per-exercise best
+   ============================================ */
+.pr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pr-empty {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 16px;
+  font-style: italic;
+}
+
+.pr-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pr-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pr-icon { font-size: 1.5rem; }
+
+.pr-name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.pr-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.pr-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 4px;
+  background: rgba(0, 255, 136, 0.06);
+  border-radius: 8px;
+}
+
+.pr-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.pr-stat-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* ============================================
+   SHARE WORKOUT — completion-view button + overlay
+   ============================================ */
+.btn-share-workout {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom);
+}
+
+.share-overlay.hidden { display: none !important; }
+
+.share-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.share-overlay-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 360px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl);
+  padding: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), var(--shadow-glow);
+  animation: bounceIn 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-overlay-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0;
+}
+
+.share-canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  display: block;
+}
+
+.share-overlay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.share-overlay-actions .btn { width: 100%; }
+
+/* ============================================
+   GROUP CONNECTION — status banner + diagnostics
+   ============================================ */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 12px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.connection-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-secondary);
+}
+
+.connection-status.conn-pending .connection-dot,
+.connection-dot.conn-pending {
+  background: var(--warning);
+  animation: connPulse 1.2s ease-in-out infinite;
+}
+
+.connection-status.conn-ok .connection-dot,
+.connection-dot.conn-ok {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.connection-status.conn-warn .connection-dot,
+.connection-dot.conn-warn {
+  background: var(--warning);
+}
+
+.connection-status.conn-err .connection-dot,
+.connection-dot.conn-err {
+  background: var(--danger);
+}
+
+.connection-status.conn-err {
+  border-color: rgba(255, 68, 102, 0.4);
+  color: var(--danger);
+}
+
+@keyframes connPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+.group-diagnostic {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+}
+
+.group-diagnostic summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  list-style: none;
+}
+
+.group-diagnostic summary::-webkit-details-marker { display: none; }
+
+.group-diagnostic summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform var(--transition);
+  margin-right: 4px;
+}
+
+.group-diagnostic[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.diagnostic-help {
+  margin: 8px 0 10px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.connection-test-results {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conn-test-row {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid var(--text-secondary);
+}
+
+.conn-test-row.conn-ok {
+  border-left-color: var(--accent);
+  color: var(--accent);
+}
+
+.conn-test-row.conn-warn {
+  border-left-color: var(--warning);
+  color: var(--warning);
+}
+
+.conn-test-row.conn-err {
+  border-left-color: var(--danger);
+  color: var(--danger);
+}
+
+.conn-test-summary {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: center;
+  padding: 8px;
+  background: rgba(0, 255, 136, 0.06);
+  border-radius: 8px;
+}

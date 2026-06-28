@@ -1,7 +1,7 @@
 // Calisthenics Roulette Service Worker
 // Cache-first strategy for full offline support
 
-const CACHE_NAME = 'calisthenics-roulette-v16';
+const CACHE_NAME = 'calisthenics-roulette-v19';
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -20,6 +20,9 @@ const ASSETS_TO_CACHE = [
   '/js/stats.js',
   '/js/theme.js',
   '/js/group.js',
+  '/js/progress.js',
+  '/js/shareCard.js',
+  '/js/notifications.js',
   'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Grotesk:wght@700&display=swap'
 ];
