@@ -36,6 +36,8 @@ workflows:
     integrations:
       app_store_connect: Codemagic
     environment:
+      groups:
+        - YAML        # holds CERTIFICATE_PRIVATE_KEY (the stable distribution key)
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
