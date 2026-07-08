@@ -414,15 +414,16 @@ export const Workout = {
     if (!this.elements) return;
 
     const {
-      exerciseEl, statusEl, setDisplayEl, repsDisplayEl,
+      exerciseEl, statusEl, setDisplayEl, repsDisplayEl, repsLabelEl,
       workTimeEl, restTimeEl, btnSetComplete, btnSkipRest
     } = this.elements;
 
     exerciseEl.textContent    = this.challenge.exercise.name;
     setDisplayEl.textContent  = `${this.currentSet} / ${this.totalSets}`;
 
-    const unitLabel = this.challenge.unit === 'seconds' ? 'sec' : '';
-    repsDisplayEl.textContent = this.challenge.reps + (unitLabel ? 's' : '');
+    const isTimed = this.challenge.unit === 'seconds';
+    repsDisplayEl.textContent = this.challenge.reps + (isTimed ? 's' : '');
+    if (repsLabelEl) repsLabelEl.textContent = isTimed ? 'SECONDS' : 'REPS';
 
     workTimeEl.textContent = this._formatTime(this.challenge.workTime);
     restTimeEl.textContent = this._formatTime(this.challenge.rest);

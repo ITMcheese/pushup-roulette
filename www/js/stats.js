@@ -28,31 +28,6 @@ export const Stats = {
   },
 
   /**
-   * Render all lifetime stats into the progress-view DOM elements and
-   * redraw the weekly chart.
-   *
-   * @param {Object} elements
-   * @param {HTMLElement} elements.totalPushups
-   * @param {HTMLElement} elements.totalWorkouts
-   * @param {HTMLElement} elements.currentStreak
-   * @param {HTMLElement} elements.longestStreak
-   * @param {HTMLElement} elements.favorite
-   */
-  render(elements) {
-    const stats    = Storage.getLifetimeStats();
-    const streak   = Storage.getStreak();
-    const favorite = Storage.getFavoriteExercise();
-
-    elements.totalPushups.textContent   = this._formatNumber(stats.totalPushups);
-    elements.totalWorkouts.textContent  = stats.totalWorkouts;
-    elements.currentStreak.textContent  = streak.current;
-    elements.longestStreak.textContent  = streak.longest;
-    elements.favorite.textContent       = favorite || 'None yet';
-
-    this.renderChart();
-  },
-
-  /**
    * (Re-)draw the weekly push-up bar chart on the canvas.
    * Automatically handles high-DPI / Retina displays.
    */
@@ -77,11 +52,13 @@ export const Stats = {
     const padding = { top: 20, right: 20, bottom: 40, left: 40 };
 
     /* ── data ──────────────────────────────────────────────────── */
-    const workouts    = Storage.getRecentWorkouts(7);
+    // Bucket by LOCAL calendar day. Comparing raw ISO (UTC) strings put a
+    // 9pm workout on tomorrow's bar and made "Today" miss evening sessions.
+    const workouts    = Storage.getRecentWorkouts(8); // 8 days: covers UTC skew
     const days        = this._getLast7Days();
     const dailyTotals = days.map(day =>
       workouts
-        .filter(w => w.date && w.date.startsWith(day.iso))
+        .filter(w => w.date && this._localDayKey(new Date(w.date)) === day.iso)
         .reduce((sum, w) => sum + (w.totalPushups || 0), 0)
     );
     const maxVal = Math.max(...dailyTotals, 1);
@@ -150,7 +127,17 @@ export const Stats = {
   /* ── internal helpers ──────────────────────────────────────────── */
 
   /**
-   * Generate date info for the last 7 calendar days.
+   * Local-timezone YYYY-MM-DD key for a Date (NOT UTC/toISOString).
+   */
+  _localDayKey(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  },
+
+  /**
+   * Generate date info for the last 7 calendar days (local time).
    * @returns {{ iso: string, label: string }[]}
    */
   _getLast7Days() {
@@ -160,20 +147,10 @@ export const Stats = {
       const d = new Date();
       d.setDate(d.getDate() - i);
       days.push({
-        iso:   d.toISOString().split('T')[0], // "YYYY-MM-DD"
+        iso:   this._localDayKey(d),
         label: i === 0 ? 'Today' : dayNames[d.getDay()]
       });
     }
     return days;
-  },
-
-  /**
-   * Human-friendly number formatting.
-   * @param {number} num
-   * @returns {string}
-   */
-  _formatNumber(num) {
-    if (num >= 10000) return (num / 1000).toFixed(1) + 'k';
-    return num.toLocaleString();
   }
 };

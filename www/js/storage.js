@@ -13,11 +13,14 @@ const KEYS = {
   PERSONAL_RECORDS: 'pr_records'
 };
 
+// Keys must match what savePreferences()/loadPreferences() in app.js
+// actually read and write ('sound'/'vibration' — NOT soundEnabled).
 const DEFAULT_PREFERENCES = {
   difficulty: 'all',
+  category: 'all',
   mode: 'standard',
-  soundEnabled: true,
-  vibrationEnabled: true,
+  sound: true,
+  vibration: true,
   theme: 'dark',
   reminderEnabled: false,
   reminderHour: 19,

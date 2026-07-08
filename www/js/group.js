@@ -55,7 +55,7 @@ export const Group = {
   roomCode: null,
   displayName: null,
   _isHost: false,
-  _callbacks: { onSpin: null, onMemberUpdate: null, onSetComplete: null, onWorkoutStart: null, onPauseToggle: null, onTimeAdjust: null, onConnectionState: null },
+  _callbacks: { onSpin: null, onMemberUpdate: null, onSetComplete: null, onWorkoutStart: null, onPauseToggle: null, onTimeAdjust: null, onConnectionState: null, onHostDisconnect: null },
 
   // Last observed ICE connection state, exposed via getConnectionInfo().
   connectionInfo: { state: 'idle', path: null, detail: null },
@@ -345,19 +345,30 @@ export const Group = {
     });
     conn.on('close', () => {
       this.hostConnection = null;
+      this._emitConnectionState('closed');
+      // Tell the app so it can restore solo controls — otherwise a member
+      // whose host vanished mid-workout is stuck with every button hidden.
+      if (this._callbacks.onHostDisconnect) this._callbacks.onHostDisconnect();
     });
   },
+
+  onHostDisconnect(cb) { this._callbacks.onHostDisconnect = cb; },
 
   /**
    * Host: broadcast a spin result to all members.
    */
   broadcastSpin(challenge) {
     if (!this._isHost) return;
+    // Send the FULL timing so members run the exact same workout as the
+    // host — workTime/unit were previously dropped, which made member
+    // timers fall back to 30s and the challenge card show NaN.
     const data = {
       exercise: challenge.exercise,
       reps: challenge.reps,
       sets: challenge.sets,
-      rest: challenge.rest
+      rest: challenge.rest,
+      workTime: challenge.workTime,
+      unit: challenge.unit
     };
     this._broadcastToAll({ type: MSG_TYPES.SPIN_RESULT, data });
   },
@@ -472,6 +483,9 @@ export const Group = {
    * Tear down all connections and reset state.
    */
   disconnect() {
+    // Detach the member-side close callback first so our OWN deliberate
+    // disconnect doesn't fire the "host vanished" recovery path.
+    this._callbacks.onHostDisconnect = null;
     this.connections.forEach(c => c.close());
     if (this.hostConnection) this.hostConnection.close();
     if (this.peer) this.peer.destroy();
@@ -481,5 +495,6 @@ export const Group = {
     this.members = [];
     this.roomCode = null;
     this._isHost = false;
+    this.connectionInfo = { state: 'idle', path: null, detail: null };
   }
 };

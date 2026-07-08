@@ -209,20 +209,45 @@ export const ShareCard = {
   },
 
   /**
-   * Try the native Web Share API with a file attachment. Falls back to
-   * downloading the PNG if share-with-files isn't supported. Returns true
-   * if the share dialog opened, false if the file was downloaded instead.
+   * Share the card image. On native iOS (Capacitor) the blob-download and
+   * Web-Share-with-files paths are unreliable inside WKWebView, so we write
+   * the PNG to the app's cache dir and open the native share sheet — which
+   * also has "Save Image" built in. On the web we use the Web Share API
+   * with a download fallback. Returns true if a share sheet opened.
    */
   async share(canvas, payload) {
-    const blob = await this.toBlob(canvas);
-    if (!blob) return false;
-    const filename = `calisthenics-roulette-${Date.now()}.png`;
-    const file = new File([blob], filename, { type: 'image/png' });
-
     const title = 'Calisthenics Roulette';
     const text  = payload?.exerciseName
       ? `Just spun ${payload.exerciseName} — ${payload.totalPushups || 0} reps in ${formatDuration(payload.duration || 0)} 💪`
       : 'Just finished a Calisthenics Roulette workout 💪';
+
+    // ── Native path (Capacitor iOS) ──
+    const cap = window.Capacitor;
+    const plugins = cap?.Plugins;
+    if (cap?.isNativePlatform?.() && plugins?.Share && plugins?.Filesystem) {
+      try {
+        const base64 = canvas.toDataURL('image/png').split(',')[1];
+        const path = `calisthenics-roulette-share.png`;
+        await plugins.Filesystem.writeFile({
+          path,
+          data: base64,
+          directory: 'CACHE'
+        });
+        const { uri } = await plugins.Filesystem.getUri({ path, directory: 'CACHE' });
+        await plugins.Share.share({ title, text, files: [uri] });
+        return true;
+      } catch (err) {
+        // "Share canceled" = the user closed the sheet; that's a success.
+        if (/cancel/i.test(String(err?.message || err))) return true;
+        // Otherwise fall through to the web path below.
+      }
+    }
+
+    // ── Web path ──
+    const blob = await this.toBlob(canvas);
+    if (!blob) return false;
+    const filename = `calisthenics-roulette-${Date.now()}.png`;
+    const file = new File([blob], filename, { type: 'image/png' });
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {

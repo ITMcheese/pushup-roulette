@@ -74,9 +74,6 @@ function updateChallengeDisplay(challenge) {
                      + challenge.exercise.difficulty.slice(1);
   diffEl.setAttribute('data-difficulty', challenge.exercise.difficulty);
 
-  $('challenge-sets').textContent = challenge.sets;
-  $('challenge-reps').textContent = challenge.reps;
-
   const unit = challenge.unit || 'reps';
   const unitLabel = unit === 'seconds' ? 'sec' : 'reps';
   const statsEl = document.querySelector('.challenge-stats');
@@ -90,7 +87,13 @@ function updateChallengeDisplay(challenge) {
   const restSpan = document.createElement('span');
   restSpan.id = 'challenge-rest';
   restSpan.textContent = challenge.rest + 's';
-  statsEl.append(setsSpan, ` sets × `, repsSpan, ` ${unitLabel}  ·  work: ${formatTimeCompact(challenge.workTime)}  ·  rest: `, restSpan);
+  // Members of older-version hosts may not receive workTime - show the
+  // stats without the work readout instead of rendering "NaN:NaN".
+  if (challenge.workTime > 0) {
+    statsEl.append(setsSpan, ` sets × `, repsSpan, ` ${unitLabel}  ·  work: ${formatTimeCompact(challenge.workTime)}  ·  rest: `, restSpan);
+  } else {
+    statsEl.append(setsSpan, ` sets × `, repsSpan, ` ${unitLabel}  ·  rest: `, restSpan);
+  }
 }
 
 // ── Generate a fresh challenge using current settings ───────
@@ -120,18 +123,7 @@ function renderProgressView() {
   $('stats-longest-streak').textContent = streak.longest ?? 0;
 
   // Favorite variation
-  const workouts = Storage.getWorkouts ? Storage.getWorkouts() : [];
-  if (workouts.length) {
-    const freq = {};
-    workouts.forEach((w) => {
-      const name = w.exercise || w.exerciseName || 'Unknown';
-      freq[name] = (freq[name] || 0) + 1;
-    });
-    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-    $('stats-favorite').textContent = sorted[0][0];
-  } else {
-    $('stats-favorite').textContent = '—';
-  }
+  $('stats-favorite').textContent = Storage.getFavoriteExercise() || '—';
 
   // Render chart via Stats module
   Stats.renderChart();
@@ -234,6 +226,19 @@ function renderTutorialStep() {
   const step = TUTORIAL_STEPS[tutorialStep];
   const target = $(step.target);
   if (!target) { closeTutorial(); return; }
+
+  // Skip steps whose target is hidden (e.g. spin/start are display:none for
+  // group members) — otherwise the spotlight lands on an empty 0×0 rect.
+  const rect = target.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    if (tutorialStep < TUTORIAL_STEPS.length - 1) {
+      tutorialStep++;
+      renderTutorialStep();
+    } else {
+      closeTutorial();
+    }
+    return;
+  }
 
   $('tutorial-overlay').classList.remove('hidden');
   $('tutorial-title').textContent = step.title;
@@ -511,17 +516,48 @@ function handleWorkoutComplete(results) {
     Group.broadcastWorkoutComplete(results);
   }
 
-  // Populate completion view
+  // Populate completion view (labels + calories are unit-aware: timed holds
+  // report seconds, not "reps", and use an isometric-hold calorie estimate).
+  const isTimed = enriched.unit === 'seconds';
   $('complete-total-pushups').textContent = results.totalPushups;
+  $('complete-reps-label').textContent    = isTimed ? 'Total Seconds' : 'Total Reps';
   $('complete-total-sets').textContent    = results.sets;
   $('complete-duration').textContent      = formatDuration(Math.round(results.duration));
-  $('complete-calories').textContent      = Math.round(results.totalPushups * 0.36);
+  // ~0.36 kcal per rep; isometric holds ~0.07 kcal per second held.
+  $('complete-calories').textContent      = Math.max(1, Math.round(results.totalPushups * (isTimed ? 0.07 : 0.36)));
+
+  // Group results: who finished, how many sets everyone got through.
+  const groupResults = $('group-results');
+  if (groupConnected) {
+    groupResults.classList.remove('hidden');
+    // Keep the heading, rebuild the rows.
+    groupResults.textContent = '';
+    const h = document.createElement('h3');
+    h.textContent = 'Group Results';
+    groupResults.appendChild(h);
+    Group.getMembers().forEach((m) => {
+      const row = document.createElement('div');
+      row.className = 'group-result-row';
+      const name = document.createElement('span');
+      name.className = 'group-result-name';
+      name.textContent = m.name + (m.isHost ? ' (host)' : '');
+      const status = document.createElement('span');
+      status.className = 'group-result-status';
+      status.textContent = m.isFinished ? '✅ Finished'
+                        : m.setsCompleted > 0 ? `Set ${m.setsCompleted}`
+                        : 'In progress';
+      row.append(name, status);
+      groupResults.appendChild(row);
+    });
+  } else {
+    groupResults.classList.add('hidden');
+  }
 
   // Cache for the Share button.
   lastCompletedWorkout = { ...enriched, streak: streak.current };
   lastWorkoutBrokeRecord = brokenRecords.length > 0;
 
-  // Push today's reminder out to tomorrow so we don't ping for a kept streak.
+  // Streak kept — replace today's reminder with a single nudge tomorrow.
   const prefs = Storage.getPreferences();
   if (prefs.reminderEnabled && Notifications.isAvailable()) {
     Notifications.onWorkoutLogged(prefs.reminderHour, prefs.reminderMinute);
@@ -562,6 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
     timerEl:        $('workout-timer'),
     setDisplayEl:   $('workout-set-display'),
     repsDisplayEl:  $('workout-reps-display'),
+    repsLabelEl:    $('workout-reps-label'),
     workTimeEl:     $('work-time-display'),
     restTimeEl:     $('rest-time-display'),
     progressRing:   $('workout-progress-ring'),
@@ -601,12 +638,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Daily reminder bootstrap ────────────────────────────
   // If the user has reminders on, make sure the schedule is alive (e.g.
-  // after a reboot or app reinstall). Fire-and-forget — no UI impact.
+  // after a reboot or app reinstall). If they already trained today, arm a
+  // single nudge for tomorrow instead so we never ping for a kept streak.
   (async () => {
     const prefs = Storage.getPreferences();
     if (!prefs.reminderEnabled || !Notifications.isAvailable()) return;
     const status = await Notifications.getPermissionStatus();
-    if (status === 'granted') {
+    if (status !== 'granted') return;
+
+    const streak = Storage.getStreak();
+    const workedOutToday = (() => {
+      if (!streak.lastWorkoutDate) return false;
+      const last = new Date(streak.lastWorkoutDate);
+      const now = new Date();
+      return last.getFullYear() === now.getFullYear()
+          && last.getMonth() === now.getMonth()
+          && last.getDate() === now.getDate();
+    })();
+
+    if (workedOutToday) {
+      Notifications.scheduleOneShotTomorrow(prefs.reminderHour, prefs.reminderMinute);
+    } else {
       Notifications.scheduleDaily(prefs.reminderHour, prefs.reminderMinute);
     }
   })();
@@ -846,13 +898,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Group Lobby ─────────────────────────────────────────
   $('btn-group').addEventListener('click', () => showView('view-group'));
 
+  // Back from the lobby NAVIGATES ONLY — it must not tear down the session.
+  // (Previously a host who tapped ← after creating a group silently killed
+  // it for every member. Leaving is explicit via the Leave Group button.)
   $('btn-back-group').addEventListener('click', () => {
-    if (groupConnected) {
-      Group.disconnect();
-    }
-    hideGroupBadge();
-    resetGroupUI();
-    updateGroupControls();
     showView('view-main');
   });
 
@@ -900,38 +949,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     Group.onConnectionState(showConnectionStatus);
 
-    const joinBtn = $('btn-join-group');
-    const joinLabel = joinBtn.textContent;
-    joinBtn.disabled = true;
-    joinBtn.textContent = 'Joining…';
-    try {
-      await Group.joinSession(code, name);
-    } catch (err) {
-      joinBtn.disabled = false;
-      joinBtn.textContent = joinLabel;
-      const msg = String(err?.message || '').toLowerCase().includes('timed out')
-        ? 'Took too long. Try the same WiFi, or run the Test Connection check.'
-        : 'Could not join — check the code and try again.';
-      showToast(msg);
-      return;
-    }
-    joinBtn.disabled = false;
-    joinBtn.textContent = joinLabel;
-
-    isGroupHost = false;
-    showGroupBadge();
-    updateGroupControls();
-    showView('view-main');
-
-    // Register group callbacks for non-host
+    // Register ALL member callbacks BEFORE joining. The host broadcasts the
+    // member list the instant our connection opens — registering after the
+    // join resolved meant that first message was silently dropped and the
+    // badge showed "0 members" until the next join/leave.
     Group.onSpinReceived(async (data) => {
       setMainButtonsDisabled(true);
 
+      // Preserve the host's full timing (workTime/unit) so this member runs
+      // the exact same workout. Fallbacks cover an older-version host.
       const challenge = {
         exercise: data.exercise,
         sets: data.sets,
         reps: data.reps,
         rest: data.rest,
+        unit: data.unit || data.exercise?.unit || 'reps',
+        workTime: data.workTime,
       };
       currentChallenge = challenge;
       await Roulette.spin(data.exercise);
@@ -946,6 +979,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sets: data.sets,
         reps: data.reps,
         rest: data.rest,
+        unit: data.unit || data.exercise?.unit || 'reps',
+        workTime: data.workTime,
       };
       showView('view-workout');
       Workout.start(currentChallenge);
@@ -968,6 +1003,39 @@ document.addEventListener('DOMContentLoaded', () => {
         $('rest-time-display').textContent = formatTimeCompact(newRest);
       }
     });
+
+    // If the host vanishes (app closed, network drop), restore solo controls
+    // so this member isn't stranded with every button hidden.
+    Group.onHostDisconnect(() => {
+      Group.disconnect();
+      hideGroupBadge();
+      resetGroupUI();
+      updateGroupControls();
+      showToast('Host disconnected — continuing solo.');
+    });
+
+    const joinBtn = $('btn-join-group');
+    const joinLabel = joinBtn.textContent;
+    joinBtn.disabled = true;
+    joinBtn.textContent = 'Joining…';
+    try {
+      await Group.joinSession(code, name);
+    } catch (err) {
+      joinBtn.disabled = false;
+      joinBtn.textContent = joinLabel;
+      const msg = String(err?.message || '').toLowerCase().includes('timed out')
+        ? 'Took too long. Try the same WiFi, or run the Test Connection check.'
+        : 'Could not join — check the code and try again.';
+      showToast(msg);
+      return;
+    }
+    joinBtn.disabled = false;
+    joinBtn.textContent = joinLabel;
+
+    isGroupHost = false;
+    showGroupBadge();
+    updateGroupControls();
+    showView('view-main');
   });
 
   // ── Test Connection (diagnostic) ───────────────────────
@@ -1097,6 +1165,13 @@ document.addEventListener('DOMContentLoaded', () => {
     await ShareCard.download($('share-canvas'));
     showToast('Image saved to your downloads.');
   });
+
+  // On native iOS the browser download path is a silent no-op — the share
+  // sheet (which has "Save Image" built in) is the only reliable exit, so
+  // hide the redundant download button there.
+  if (window.Capacitor?.isNativePlatform?.()) {
+    $('btn-share-download').classList.add('hidden');
+  }
 
   // ── Settings change listeners ──────────────────────────
   $('setting-difficulty').addEventListener('change', (e) => {

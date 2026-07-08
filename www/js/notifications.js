@@ -32,15 +32,11 @@ function pickBody() {
   return REMINDER_BODIES[Math.floor(Math.random() * REMINDER_BODIES.length)];
 }
 
-// Build the next Date that matches the given hour+minute. If that time has
-// already passed today, fast-forward to tomorrow at the same time.
-function nextOccurrence(hour, minute) {
+// Tomorrow at the given local hour:minute.
+function tomorrowAt(hour, minute) {
   const d = new Date();
-  d.setSeconds(0, 0);
+  d.setDate(d.getDate() + 1);
   d.setHours(hour, minute, 0, 0);
-  if (d.getTime() <= Date.now()) {
-    d.setDate(d.getDate() + 1);
-  }
   return d;
 }
 
@@ -79,6 +75,9 @@ export const Notifications = {
 
   /**
    * Schedule a repeating daily reminder at the given local time.
+   * Uses `schedule.on` (UNCalendarNotificationTrigger with repeats on iOS) —
+   * the documented reliable pattern for "every day at H:MM". The previous
+   * `at` + `every: 'day'` combo is handled inconsistently by the iOS plugin.
    * Cancels any existing reminder first so we never stack duplicates.
    * @param {number} hour 0-23
    * @param {number} minute 0-59
@@ -88,16 +87,13 @@ export const Notifications = {
     if (!p) return false;
     try {
       await p.cancel({ notifications: [{ id: REMINDER_ID }] });
-      const at = nextOccurrence(hour, minute);
       await p.schedule({
         notifications: [{
           id: REMINDER_ID,
           title: 'Keep your streak alive 🔥',
           body: pickBody(),
           schedule: {
-            at,
-            // Repeat every day at the same time — iOS uses the `every` field.
-            every: 'day',
+            on: { hour, minute },
             allowWhileIdle: true
           }
         }]
@@ -105,6 +101,35 @@ export const Notifications = {
       return true;
     } catch (err) {
       console.warn('scheduleDaily failed', err);
+      return false;
+    }
+  },
+
+  /**
+   * Schedule a single one-shot reminder for TOMORROW at the given time.
+   * Used right after a workout: the streak is kept today, so today's
+   * repeating ping is cancelled and replaced with one nudge tomorrow.
+   * (The repeating schedule is re-armed on the next app open.)
+   */
+  async scheduleOneShotTomorrow(hour = 19, minute = 0) {
+    const p = plugin();
+    if (!p) return false;
+    try {
+      await p.cancel({ notifications: [{ id: REMINDER_ID }] });
+      await p.schedule({
+        notifications: [{
+          id: REMINDER_ID,
+          title: 'Keep your streak alive 🔥',
+          body: pickBody(),
+          schedule: {
+            at: tomorrowAt(hour, minute),
+            allowWhileIdle: true
+          }
+        }]
+      });
+      return true;
+    } catch (err) {
+      console.warn('scheduleOneShotTomorrow failed', err);
       return false;
     }
   },
@@ -119,17 +144,10 @@ export const Notifications = {
   },
 
   /**
-   * Called after a workout is logged. If the reminder for today hasn't fired
-   * yet, reschedule it for tomorrow at the same time so we don't ping the
-   * user for a streak they already kept.
+   * Called after a workout is logged: don't ping for a streak the user
+   * already kept today — replace the schedule with one nudge tomorrow.
    */
   async onWorkoutLogged(hour = 19, minute = 0) {
-    const p = plugin();
-    if (!p) return;
-    // The repeating schedule re-fires daily on its own; we just need to push
-    // today's instance forward if it hasn't fired. The simplest correct way
-    // is to cancel+reschedule, which sets the next `at` to the next-future
-    // occurrence (which will be tomorrow once today's time has passed).
-    await this.scheduleDaily(hour, minute);
+    await this.scheduleOneShotTomorrow(hour, minute);
   }
 };

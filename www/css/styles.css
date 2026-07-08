@@ -2212,3 +2212,27 @@ body.group-member #btn-complete-spin { display: none !important; }
   background: rgba(0, 255, 136, 0.06);
   border-radius: 8px;
 }
+
+/* Group results rows on the completion screen */
+.group-result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.group-result-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.group-result-status {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
