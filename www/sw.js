@@ -1,7 +1,7 @@
 // Calisthenics Roulette Service Worker
 // Cache-first strategy for full offline support
 
-const CACHE_NAME = 'calisthenics-roulette-v20';
+const CACHE_NAME = 'calisthenics-roulette-v21';
 
 const ASSETS_TO_CACHE = [
   '/',

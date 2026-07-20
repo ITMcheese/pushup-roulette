@@ -1193,27 +1193,27 @@ document.addEventListener('DOMContentLoaded', () => {
     savePreferences();
   });
 
+  // No in-app toasts here: settings changes are silent. The toggle's own
+  // on/off state is the feedback, and anything the user needs to be told
+  // about reminders comes from iOS itself (the permission prompt and the
+  // real notification), not from a banner inside the app.
   $('setting-reminder').addEventListener('change', async (e) => {
     const wantOn = e.target.checked;
     savePreferences();
-    if (!Notifications.isAvailable()) {
-      if (wantOn) showToast('Reminders need the installed app on your phone.');
-      return;
-    }
+    if (!Notifications.isAvailable()) return;
+
     if (wantOn) {
       const status = await Notifications.requestPermission();
       if (status !== 'granted') {
+        // Permission refused — snap the toggle back so it reflects reality.
         e.target.checked = false;
         savePreferences();
-        showToast('Enable notifications in iOS Settings to get reminders.');
         return;
       }
       const prefs = Storage.getPreferences();
-      const ok = await Notifications.scheduleDaily(prefs.reminderHour, prefs.reminderMinute);
-      showToast(ok ? 'Daily reminder set for 7pm. 🔔' : 'Could not schedule reminder.');
+      await Notifications.scheduleDaily(prefs.reminderHour, prefs.reminderMinute);
     } else {
       await Notifications.cancel();
-      showToast('Daily reminder off.');
     }
   });
 
