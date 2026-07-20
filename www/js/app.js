@@ -889,8 +889,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Progress ────────────────────────────────────────────
   $('btn-progress').addEventListener('click', () => {
-    renderProgressView();
+    // Show FIRST, render second: the chart canvas sizes itself from
+    // offsetWidth/offsetHeight, which are 0 while the view is display:none.
+    // Rendering before showing zeroed the canvas permanently (invisible chart).
     showView('view-progress');
+    renderProgressView();
   });
 
   $('btn-back-progress').addEventListener('click', () => showView('view-main'));
@@ -924,7 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showConnectionStatus({ state: 'signaling' });
     try {
       const code = await Group.createSession(name);
-      showConnectionStatus({ state: 'connected', path: 'direct' });
+      showConnectionStatus({ state: 'connected', path: 'relay' });
       $('group-host-section').classList.remove('hidden');
       $('group-join-section').classList.add('hidden');
       $('group-code').textContent = code;
@@ -1054,12 +1057,10 @@ document.addEventListener('DOMContentLoaded', () => {
         d.textContent = `${icon} ${label}: ${ok ? 'OK' : (hint || 'unavailable')}`;
         return d;
       };
-      resultsEl.appendChild(row('🛰️', 'Signaling server', r.signaling,
-        'Cannot reach the matchmaker server. Check your internet.'));
-      resultsEl.appendChild(row('🌐', 'STUN (same-WiFi reach)', r.stun,
-        'STUN servers unreachable. Same-WiFi groups will still try.'));
-      resultsEl.appendChild(row('🔁', 'TURN (cellular fallback)', r.turn,
-        'Free TURN is unreachable. Cellular groups won\'t connect reliably.'));
+      resultsEl.appendChild(row('🛰️', 'Group server', r.server,
+        'Cannot reach the group server. Check your internet.'));
+      resultsEl.appendChild(row('🔌', 'Live connection', r.websocket,
+        'WebSockets are blocked on this network.'));
       if (r.error) {
         const e = document.createElement('div');
         e.className = 'conn-test-row conn-err';
@@ -1068,14 +1069,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const summary = document.createElement('p');
       summary.className = 'conn-test-summary';
-      if (r.signaling && r.turn) {
-        summary.textContent = 'Looks good — group workouts should connect even on cellular.';
-      } else if (r.signaling && r.stun) {
-        summary.textContent = 'Same-WiFi groups should work. Cellular may fail — try the same WiFi.';
-      } else if (r.signaling) {
-        summary.textContent = 'Matchmaking works but neither STUN nor TURN reach you. Try a different network.';
+      if (r.server && r.websocket) {
+        summary.textContent = 'All good — group workouts will connect on this network.';
+      } else if (r.server) {
+        summary.textContent = 'Server reachable but live connections are blocked — this network may filter WebSockets. Try cellular.';
       } else {
-        summary.textContent = 'No connectivity to the matchmaker. Check Wi-Fi/cellular.';
+        summary.textContent = 'No connection to the group server. Check Wi-Fi/cellular and try again.';
       }
       resultsEl.appendChild(summary);
     } finally {

@@ -1,7 +1,7 @@
 // Calisthenics Roulette Service Worker
 // Cache-first strategy for full offline support
 
-const CACHE_NAME = 'calisthenics-roulette-v22';
+const CACHE_NAME = 'calisthenics-roulette-v23';
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -23,7 +23,6 @@ const ASSETS_TO_CACHE = [
   '/js/progress.js',
   '/js/shareCard.js',
   '/js/notifications.js',
-  'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Grotesk:wght@700&display=swap'
 ];
 
@@ -62,9 +61,9 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip WebRTC signaling requests (PeerJS server)
+  // Never intercept live group-relay traffic.
   const url = new URL(event.request.url);
-  if (url.hostname === '0.peerjs.com' || url.pathname.includes('/peerjs/')) {
+  if (url.hostname === 'calisthenics-relay.fly.dev') {
     return;
   }
 

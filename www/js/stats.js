@@ -42,6 +42,10 @@ export const Stats = {
     const cssWidth  = canvas.offsetWidth;
     const cssHeight = canvas.offsetHeight;
 
+    // Never size from a hidden/collapsed layout — writing 0 into the canvas
+    // attributes bricks it (height:auto then resolves to 0 forever).
+    if (cssWidth === 0 || cssHeight === 0) return;
+
     canvas.width  = cssWidth  * dpr;
     canvas.height = cssHeight * dpr;
     ctx.scale(dpr, dpr);

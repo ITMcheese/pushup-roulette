@@ -40,6 +40,10 @@ export const Roulette = {
   _activeIndex: -1,
   _selectionCallback: null,
   _hasEvents: false,
+  // Where a programmatic spin/align just parked the reel. Used to veto
+  // scroll-snap drift: right after we set scrollTop, snap can nudge the
+  // reel one item, which used to silently re-select a NEIGHBOR exercise.
+  _lastAligned: null,
 
   /* ── public API ────────────────────────────────────────────────── */
 
@@ -107,10 +111,44 @@ export const Roulette = {
       this.stripEl.style.transform = `translateY(${startY}px)`;
 
       let lastTickIndex = startIndex;
+      let finished = false;
+      let watchdog = null;
       const t0 = performance.now();
 
-      const frame = (now) => {
-        const elapsed = now - t0;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        if (watchdog) { clearInterval(watchdog); watchdog = null; }
+
+        // Reset strip transform to 0 and align container scrollTop natively
+        this.stripEl.style.transform = 'translateY(0px)';
+        this.containerEl.scrollTop = targetIndex * ITEM_HEIGHT;
+        this.containerEl.classList.remove('spinning');
+        this._lastAligned = { index: targetIndex, at: performance.now() };
+
+        Audio.spinComplete();
+        Audio.vibrate([80, 40, 80]);
+
+        // Highlight the winning item
+        this.stripEl.querySelectorAll('.roulette-item.active')
+          .forEach(el => el.classList.remove('active'));
+        const items = this.stripEl.querySelectorAll('.roulette-item');
+        if (items[targetIndex]) {
+          items[targetIndex].classList.add('active');
+        }
+        this._activeIndex = targetIndex;
+
+        // Keep isSpinning true for an extra 150ms to ignore trailing scroll events
+        setTimeout(() => {
+          this.isSpinning = false;
+        }, 150);
+
+        resolve();
+      };
+
+      const frame = (fromRaf) => {
+        if (finished) return;
+        const elapsed = performance.now() - t0;
         const progress = Math.min(elapsed / SPIN_DURATION, 1);
         const eased = easeOutCubic(progress);
 
@@ -126,36 +164,22 @@ export const Roulette = {
           lastTickIndex = currentItemIndex;
         }
 
-        if (progress < 1) {
-          requestAnimationFrame(frame);
-        } else {
-          // Reset strip transform to 0 and align container scrollTop natively
-          this.stripEl.style.transform = 'translateY(0px)';
-          this.containerEl.scrollTop = targetIndex * ITEM_HEIGHT;
-          this.containerEl.classList.remove('spinning');
-
-          Audio.spinComplete();
-          Audio.vibrate([80, 40, 80]);
-
-          // Highlight the winning item
-          this.stripEl.querySelectorAll('.roulette-item.active')
-            .forEach(el => el.classList.remove('active'));
-          const items = this.stripEl.querySelectorAll('.roulette-item');
-          if (items[targetIndex]) {
-            items[targetIndex].classList.add('active');
-          }
-          this._activeIndex = targetIndex;
-
-          // Keep isSpinning true for an extra 150ms to ignore trailing scroll events
-          setTimeout(() => {
-            this.isSpinning = false;
-          }, 150);
-          
-          resolve();
+        if (progress >= 1) {
+          finish();
+        } else if (fromRaf) {
+          requestAnimationFrame(() => frame(true));
         }
       };
 
-      requestAnimationFrame(frame);
+      requestAnimationFrame(() => frame(true));
+      // Watchdog: requestAnimationFrame freezes whenever the page isn't
+      // visible (app backgrounded mid-spin, notification shade, etc.).
+      // A frozen spin used to deadlock the UI — isSpinning stuck true,
+      // buttons disabled, and currentChallenge silently out of sync with
+      // the card. The interval keeps time-based progress moving so the
+      // spin ALWAYS completes; frame() is idempotent and first-to-finish
+      // wins, so rAF + interval never double-complete.
+      watchdog = setInterval(() => frame(false), 120);
     });
   },
 
@@ -193,6 +217,7 @@ export const Roulette = {
     this.stripEl.style.transform = 'translateY(0px)';
     this.containerEl.scrollTop = targetIndex * ITEM_HEIGHT;
     this.containerEl.classList.remove('spinning');
+    this._lastAligned = { index: targetIndex, at: performance.now() };
 
     // Highlight the winning item
     this.stripEl.querySelectorAll('.roulette-item.active')
@@ -287,6 +312,15 @@ export const Roulette = {
 
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
+        // Scroll-snap drift veto: shortly after a programmatic spin/align,
+        // snap re-engagement can nudge the reel one item. Selecting that
+        // neighbor would silently swap the user's exercise — instead, pull
+        // the reel back onto the intended target and select nothing new.
+        const aligned = this._lastAligned;
+        if (aligned && performance.now() - aligned.at < 700 && index !== aligned.index) {
+          this.containerEl.scrollTop = aligned.index * ITEM_HEIGHT;
+          return;
+        }
         if (this._selectionCallback && index >= 0 && index < this._items.length) {
           this._selectionCallback(this._items[index]);
         }

@@ -24,16 +24,11 @@
   <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self';
-                 script-src 'self' https://unpkg.com;
+                 script-src 'self';
                  style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
                  font-src 'self' https://fonts.gstatic.com;
                  img-src 'self' https://fitnessprogramer.com data:;
-                 connect-src 'self' https://0.peerjs.com wss://0.peerjs.com stun: stuns: turn: turns: https://openrelay.metered.ca" />
-
-  <!-- PeerJS -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"
-          integrity="sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR"
-          crossorigin="anonymous"></script>
+                 connect-src 'self' https://calisthenics-relay.fly.dev wss://calisthenics-relay.fly.dev" />
 
   <!-- App -->
   <script defer type="module" src="js/app.js"></script>
@@ -453,8 +448,8 @@
       <details class="group-diagnostic">
         <summary>Trouble connecting? Test your network</summary>
         <p class="diagnostic-help">
-          Both phones on the <b>same Wi-Fi</b> work best. Cellular connections need a TURN relay
-          and may be unreliable on free servers.
+          Group workouts work over <b>any internet connection</b> — Wi-Fi or cellular,
+          same network or not. If joining fails, run this check.
         </p>
         <button id="btn-test-connection" class="btn btn-secondary" style="width: 100%;">🩺 Test Connection</button>
         <div id="connection-test-results" class="connection-test-results"></div>
