@@ -1423,6 +1423,17 @@ body {
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.feedback-status {
+  margin-top: 8px;
+  min-height: 1.1rem;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--accent);
+  transition: opacity var(--transition);
+}
+
+.feedback-status.is-error { color: var(--warning); }
+
 .feedback-textarea:focus {
   outline: none;
   border-color: var(--accent) !important;

@@ -1223,15 +1223,26 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Submit Feedback ─────────────────────────────────────
+  // Confirmation is inline text inside the panel, not a floating banner —
+  // nothing on the Settings screen pops a notification.
+  let _feedbackStatusTimer = null;
+  const setFeedbackStatus = (msg, isError = false) => {
+    const el = $('feedback-status');
+    el.textContent = msg;
+    el.classList.toggle('is-error', isError);
+    clearTimeout(_feedbackStatusTimer);
+    if (msg) _feedbackStatusTimer = setTimeout(() => { el.textContent = ''; }, 4000);
+  };
+
   $('btn-submit-feedback').addEventListener('click', () => {
     const feedbackText = $('feedback-input').value.trim();
     if (!feedbackText) {
-      showToast('Please enter some feedback first!');
+      setFeedbackStatus('Type something first.', true);
       return;
     }
 
     Storage.saveFeedback(feedbackText);
     $('feedback-input').value = '';
-    showToast('Thank you! Feedback saved locally.');
+    setFeedbackStatus('Thanks — saved on this device.');
   });
 });
