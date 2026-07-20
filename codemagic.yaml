@@ -1,31 +1,25 @@
 # ──────────────────────────────────────────────────────────────────────────
-# ONE-TIME SETUP for external TestFlight to work (founder action required)
+# SIGNING: uses the TEAM-WIDE SHARED distribution certificate (2026-07-19)
 # ──────────────────────────────────────────────────────────────────────────
-# This pipeline reuses a STABLE distribution certificate across every build.
-# Previously the YAML generated a new RSA key + revoked the old cert on every
-# build (a hack to dodge Apple's 3-cert limit), which made every build sign
-# with a different key. Apple's beta-review process rejects that with
-# ITMS-90035 Invalid Signature, blocking external TestFlight.
+# Every app on Apple team J93K5FJFQ8 signs with ONE shared distribution
+# certificate: SMYR267643 (serial 59F1B27C10BF2C7EDDCCC98D257D4CC8). Its
+# private key is held by EAS (Sage + Mortgage Math build with it), by grams'
+# GitHub CI, and locally at C:\Users\kojo\.apple-certs\shared-dist-key.pem.
+# Per-app certificates are gone: Apple's team cert quota kept filling up and
+# forced revocations that broke sibling apps' CI (2026-06-28, 2026-07-16).
 #
-# For the new flow to work, the founder must set ONE secure env var in
-# Codemagic's UI (this only needs to be done once):
+# This app's OLD per-app cert was revoked in the 2026-07-16 churn, so the
+# founder must update ONE secure env var in Codemagic before the next build:
 #
 #   1. Codemagic UI → Apps → Calisthenics Roulette → Environment variables
-#   2. Add variable:
-#        Name:   CERTIFICATE_PRIVATE_KEY
-#        Value:  the contents of a 2048-bit RSA private key in PEM format
-#                (start with -----BEGIN RSA PRIVATE KEY-----)
-#        Group:  default
-#        Secure: ON  (so it persists encrypted and never logs)
-#   3. Generate the key locally with:
-#        openssl genrsa 2048 > my-distribution-key.pem
-#      Paste the entire file contents (including BEGIN/END lines).
+#   2. Edit CERTIFICATE_PRIVATE_KEY (group "YAML", Secure: ON) and replace
+#      its value with the FULL contents of
+#        C:\Users\kojo\.apple-certs\shared-dist-key.pem
+#      (open in Notepad, Ctrl+A, Ctrl+C, paste — include BEGIN/END lines).
 #
-# After that's set, every push to main reuses the same cert. If Apple already
-# has an active distribution cert tied to a DIFFERENT key, revoke it ONCE in
-# App Store Connect (Certificates, IDs & Profiles), then trigger a build —
-# fetch-signing-files --create will create a fresh cert against the stable
-# key and use it forever after.
+# With that key, fetch-signing-files below MATCHES the shared cert and never
+# creates a new one. Never revoke any distribution certificate on this team
+# without confirming no app signs with it.
 # ──────────────────────────────────────────────────────────────────────────
 
 workflows:
